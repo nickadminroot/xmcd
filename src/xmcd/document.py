@@ -112,6 +112,13 @@ class MathRegion(Region):
     result_format: ResultFormat | None = None
     disabled: bool = False
 
+    def to_xml(self, context=None):
+        node = super().to_xml(context)
+        # Mathcad positions a formula by its mathematical axis. Tall matrices,
+        # programs and result tables extend both above and below that axis.
+        node.set("align-y", str(self.top + self.height / 2))
+        return node
+
     def content_xml(self, context):
         node = element("math", disable_calc=str(self.disabled).lower())
         node.append(self.expression.to_xml())
