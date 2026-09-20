@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?validation-md5-digest 1758fb621a735946db775fa8699ef70f?>
+<worksheet version="3.0.3" xmlns="http://schemas.mathsoft.com/worksheet30" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ws="http://schemas.mathsoft.com/worksheet30" xmlns:ml="http://schemas.mathsoft.com/math30" xmlns:u="http://schemas.mathsoft.com/units10" xmlns:p="http://schemas.mathsoft.com/provenance10">
+	<pointReleaseData/>
+	<metadata>
+		<generator>Mathcad Professional 14.1</generator>
+		<userData>
+			<title>Static validation comparison</title>
+			<description/>
+			<author/>
+			<company/>
+			<keywords/>
+			<revisedBy>NickAdminRoot</revisedBy>
+		</userData>
+		<identityInfo>
+			<revision>1</revision>
+			<documentID>0B527A35-BE71-4AB1-820A-2614622AA2D3</documentID>
+			<versionID>3C037C51-9C80-470D-8695-89A6C780FF93</versionID>
+			<parentVersionID>00000000-0000-0000-0000-000000000000</parentVersionID>
+			<branchID>00000000-0000-0000-0000-000000000000</branchID>
+		</identityInfo>
+	</metadata>
+	<settings>
+		<presentation>
+			<textRendering>
+				<textStyles>
+					<textStyle name="Normal">
+						<blockAttr margin-left="0" margin-right="0" text-indent="inherit" text-align="left" list-style-type="inherit" tabs="inherit"/>
+						<inlineAttr font-family="Arial" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="inherit" line-through="inherit" vertical-align="inherit"/>
+					</textStyle>
+					<textStyle name="Heading 1">
+						<blockAttr margin-left="0" margin-right="0" text-indent="inherit" text-align="left" list-style-type="inherit" tabs="inherit"/>
+						<inlineAttr font-family="Arial" font-charset="0" font-size="14" font-weight="bold" font-style="normal" underline="inherit" line-through="inherit" vertical-align="inherit"/>
+					</textStyle>
+					<textStyle name="Heading 2">
+						<blockAttr margin-left="0" margin-right="0" text-indent="inherit" text-align="left" list-style-type="inherit" tabs="inherit"/>
+						<inlineAttr font-family="Arial" font-charset="0" font-size="12" font-weight="bold" font-style="normal" underline="inherit" line-through="inherit" vertical-align="inherit"/>
+					</textStyle>
+				</textStyles>
+			</textRendering>
+			<mathRendering equation-color="#000">
+				<operators multiplication="narrow-dot" derivative="derivative" literal-subscript="large" definition="colon-equal" global-definition="triple-equal" local-definition="left-arrow" equality="bold-equal" symbolic-evaluation="right-arrow"/>
+				<mathStyles>
+					<mathStyle name="Variables" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="Constants" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 1" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 2" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 3" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 4" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 5" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 6" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="User 7" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+					<mathStyle name="Math Text Font" font-family="Times New Roman" font-charset="0" font-size="10" font-weight="normal" font-style="normal" underline="false"/>
+				</mathStyles>
+				<dimensionNames mass="mass" length="length" time="time" current="current" thermodynamic-temperature="temperature" luminous-intensity="luminosity" amount-of-substance="substance" display="false"/>
+				<symbolics derivation-steps-style="vertical-insert" show-comments="false" evaluate-in-place="false"/>
+				<results numeric-only="true">
+					<general precision="6" show-trailing-zeros="false" radix="dec" complex-threshold="10" zero-threshold="15" imaginary-value="i" exponential-threshold="3"/>
+					<matrix display-style="matrix" expand-nested-arrays="false"/>
+					<unit format-units="false" simplify-units="false" fractional-unit-exponent="false"/>
+				</results>
+			</mathRendering>
+			<pageModel show-page-frame="false" show-header-frame="false" show-footer-frame="false" header-footer-start-page="1" paper-code="9" orientation="portrait" print-single-page-width="false" page-width="595.5" page-height="842.25">
+				<margins left="36" right="36" top="36" bottom="36"/>
+				<header use-full-page-width="false"/>
+				<footer use-full-page-width="false"/>
+			</pageModel>
+			<colorModel background-color="#fff" default-highlight-color="#ffff80"/>
+			<language math="ru" UI="ru"/>
+		</presentation>
+		<calculation>
+			<builtInVariables array-origin="0" convergence-tolerance="0.001" constraint-tolerance="0.001" random-seed="1" prn-precision="4" prn-col-width="8"/>
+			<calculationBehavior automatic-recalculation="true" matrix-strict-singularity-check="false" optimize-expressions="false" exact-boolean="true" strings-use-origin="false" zero-over-zero="error">
+				<compatibility multiple-assignment="MC12" local-assignment="MC11"/>
+			</calculationBehavior>
+			<units>
+				<currentUnitSystem name="si" customized="false"/>
+			</units>
+		</calculation>
+		<editor view-annotations="false" view-regions="false">
+			<ruler is-visible="false" ruler-unit="in"/>
+			<grid granularity-x="6" granularity-y="6"/>
+		</editor>
+		<fileFormat image-type="none" image-quality="75" save-numeric-results="true" exclude-large-results="false" save-text-images="false" screen-dpi="96"/>
+		<miscellaneous>
+			<handbook handbook-region-tag-ub="18" can-delete-original-handbook-regions="true" can-delete-user-regions="true" can-print="true" can-copy="true" can-save="true" file-permission-mask="1"/>
+		</miscellaneous>
+	</settings>
+	<regions>
+		<region region-id="1" left="0" top="14.25" width="399.75" height="12" align-x="0" align-y="24" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">Deliberately invalid formulas followed by valid controls</p>
+			</text>
+		</region>
+		<region region-id="2" left="0" top="50.25" width="399.75" height="12" align-x="0" align-y="60" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">undefined-symbol</p>
+			</text>
+		</region>
+		<region region-id="3" left="0" top="111" width="152.25" height="12.75" align-x="134.25" align-y="120" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="undefined-symbol">
+			<math error="Эта переменная не определена." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:plus/>
+						<ml:id xml:space="preserve">missing_validation_variable</ml:id>
+						<ml:real>1</ml:real>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="4" left="0" top="170.25" width="399.75" height="12" align-x="0" align-y="180" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">function-arity</p>
+			</text>
+		</region>
+		<region region-id="5" left="0" top="225" width="56.25" height="12.75" align-x="38.25" align-y="234" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="function-arity">
+			<math error="Этой функции требуется 1 аргумент, но применяется она к 2." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:id xml:space="preserve">sin</ml:id>
+						<ml:sequence>
+							<ml:real>1</ml:real>
+							<ml:real>2</ml:real>
+						</ml:sequence>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="6" left="0" top="284.25" width="399.75" height="12" align-x="0" align-y="294" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">matrix-dimensions</p>
+			</text>
+		</region>
+		<region region-id="7" left="0" top="330.75" width="94.5" height="29.25" align-x="76.5" align-y="348" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="matrix-dimensions">
+			<math error="Размерности массива не совпадают." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:mult/>
+						<ml:matrix rows="2" cols="3">
+							<ml:real>1</ml:real>
+							<ml:real>4</ml:real>
+							<ml:real>2</ml:real>
+							<ml:real>5</ml:real>
+							<ml:real>3</ml:real>
+							<ml:real>6</ml:real>
+						</ml:matrix>
+						<ml:matrix rows="2" cols="2">
+							<ml:real>1</ml:real>
+							<ml:real>3</ml:real>
+							<ml:real>2</ml:real>
+							<ml:real>4</ml:real>
+						</ml:matrix>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="8" left="0" top="398.25" width="399.75" height="12" align-x="0" align-y="408" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">index-bounds</p>
+			</text>
+		</region>
+		<region region-id="9" left="0" top="450.75" width="65.25" height="33.75" align-x="47.25" align-y="468" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="index-bounds">
+			<math error="Индекс массива является недопустимым для этого массива." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:indexer/>
+						<ml:matrix rows="2" cols="2">
+							<ml:real>1</ml:real>
+							<ml:real>3</ml:real>
+							<ml:real>2</ml:real>
+							<ml:real>4</ml:real>
+						</ml:matrix>
+						<ml:sequence>
+							<ml:real>2</ml:real>
+							<ml:real>0</ml:real>
+						</ml:sequence>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="10" left="0" top="512.25" width="399.75" height="12" align-x="0" align-y="522" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">unit-mismatch</p>
+			</text>
+		</region>
+		<region region-id="11" left="0" top="573" width="46.5" height="12.75" align-x="28.5" align-y="582" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="unit-mismatch">
+			<math error="Значение имеет единицы измерения: время, &#xA;а должно иметь единицы измерения: длина." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:plus/>
+						<ml:id xml:space="preserve">m</ml:id>
+						<ml:id xml:space="preserve">s</ml:id>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="12" left="0" top="626.25" width="399.75" height="12" align-x="0" align-y="636" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<text use-page-width="false" push-down="false" lock-width="true">
+				<p style="Normal" margin-left="inherit" margin-right="inherit" text-indent="inherit" text-align="inherit" list-style-type="inherit" tabs="inherit">division-by-zero</p>
+			</text>
+		</region>
+		<region region-id="13" left="0" top="680.25" width="30.75" height="27.75" align-x="12.75" align-y="696" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="division-by-zero">
+			<math error="Деление на ноль." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:div/>
+						<ml:real>1</ml:real>
+						<ml:real>0</ml:real>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="14" left="0" top="742.5" width="65.25" height="45.75" align-x="42.75" align-y="768" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="valid-dot-14">
+			<math optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:mult/>
+						<ml:matrix rows="3" cols="1">
+							<ml:real>1</ml:real>
+							<ml:real>2</ml:real>
+							<ml:real>3</ml:real>
+						</ml:matrix>
+						<ml:matrix rows="3" cols="1">
+							<ml:real>1</ml:real>
+							<ml:real>2</ml:real>
+							<ml:real>3</ml:real>
+						</ml:matrix>
+					</ml:apply>
+					<result xmlns="http://schemas.mathsoft.com/math30">
+						<ml:real>14</ml:real>
+					</result>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="15" left="0" top="825" width="37.5" height="12.75" align-x="19.5" align-y="834" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="factorial-probe">
+			<math error="Функция не определена в одной или нескольких указанных точках." optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:factorial/>
+						<ml:real>2.5</ml:real>
+					</ml:apply>
+				</ml:eval>
+			</math>
+		</region>
+		<region region-id="16" left="0" top="891" width="75.75" height="18.75" align-x="35.25" align-y="906" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<math optimize="false" disable-calc="false">
+				<ml:define xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:function>
+						<ml:id xml:space="preserve">cost</ml:id>
+						<ml:boundVars>
+							<ml:id xml:space="preserve">x</ml:id>
+						</ml:boundVars>
+					</ml:function>
+					<ml:apply>
+						<ml:pow/>
+						<ml:parens>
+							<ml:apply>
+								<ml:minus/>
+								<ml:id xml:space="preserve">x</ml:id>
+								<ml:real>3</ml:real>
+							</ml:apply>
+						</ml:parens>
+						<ml:real>2</ml:real>
+					</ml:apply>
+				</ml:define>
+			</math>
+		</region>
+		<region region-id="17" left="0" top="933" width="23.25" height="12.75" align-x="10.5" align-y="942" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="">
+			<math optimize="false" disable-calc="false">
+				<ml:define xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:id xml:space="preserve">x</ml:id>
+					<ml:real>1</ml:real>
+				</ml:define>
+			</math>
+		</region>
+		<region region-id="18" left="0" top="987" width="92.25" height="12.75" align-x="74.25" align-y="996" show-border="false" show-highlight="false" is-protected="false" z-order="0" background-color="inherit" tag="valid-minimum-3">
+			<math optimize="false" disable-calc="false">
+				<ml:eval placeholderMultiplicationStyle="default" xmlns:ml="http://schemas.mathsoft.com/math30">
+					<ml:apply>
+						<ml:Minimize auto-method="true" method="conjugate" derivative-estimation="central" variable-estimation="tangent" linear-check="false" multistart="false" evolutionary="false"/>
+						<ml:sequence>
+							<ml:id xml:space="preserve">cost</ml:id>
+							<ml:id xml:space="preserve">x</ml:id>
+						</ml:sequence>
+					</ml:apply>
+					<result xmlns="http://schemas.mathsoft.com/math30">
+						<ml:real>3</ml:real>
+					</result>
+				</ml:eval>
+			</math>
+		</region>
+	</regions>
+</worksheet>

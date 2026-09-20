@@ -14,7 +14,8 @@
 | `define(lhs, rhs, **layout)` | Обычное определение `:=` |
 | `evaluate(expression, unit=None, **layout)` | Вычисление `=` и необязательная единица результата |
 | `plot(*traces, **layout)` / `polar_plot(...)` | Редактируемый график |
-| `to_xml()` / `to_bytes()` / `write(path)` | Дерево lxml, XML-байты или запись файла |
+| `check()` / `validate()` | Статический отчёт или проверка с исключением при ошибках |
+| `to_xml()` / `to_bytes()` / `write(path)` | Низкоуровневое дерево/байты или проверенная запись файла |
 
 `layout`: `left`, `top`, `width`, `height` в пунктах, `tag`, `border`. При `top=None` регион размещается автоматически; при `height=None` его высота оценивается с запасом. Это относится и к `add(region)`. Перед сериализацией поток пересчитывается, поэтому изменение формулы сдвигает следующие автоматические регионы. Явные координаты и высота сохраняются. [Правила и ограничения размещения](layout.md). Родительский каталог для `write` должен существовать.
 
@@ -61,7 +62,7 @@
 
 `Solver` принимает необязательный `method: SolverMethod`: `LINEAR`, `CONJUGATE`, `NEWTON`, `QUADRATIC`, `LEVENBERG`; для `ODESOLVE` — `FIXED`, `ADAPTIVE`, `RADAU`, `ADAMS_BDF`. Пригодность метода зависит от задачи; живые примеры проверяют автоматический выбор.
 
-Встроенные функции представлены `BuiltinFunction`: например, `BuiltinFunction.LINTERP`, `BuiltinFunction.LSOLVE`, `BuiltinFunction.RKADAPT`. Для остальных встроенных и пользовательских функций используйте `Symbol("имя")(аргументы)` — без ограничения реестром. Имена и аргументы должны соответствовать установленному Mathcad. Квадратный корень задавайте `.sqrt()`. Пространство сокращений `f` удалено.
+Встроенные функции представлены `BuiltinFunction`: например, `BuiltinFunction.LINTERP`, `BuiltinFunction.LSOLVE`, `BuiltinFunction.RKADAPT`. Для остальных встроенных и пользовательских функций используйте `Symbol("имя")(аргументы)` — с определением на листе либо явным объявлением в `ValidationContext` для неизвестных анализатору встроенных функций. Имена и аргументы должны соответствовать установленному Mathcad. Квадратный корень задавайте `.sqrt()`. Пространство сокращений `f` удалено.
 
 ## Программы
 
@@ -81,6 +82,8 @@ sheet.write('program.xmcd')
 
 `Trace(x, y, color=None, style=LineStyle.SOLID, marker=Marker.NONE)`, `XYPlot(traces, **layout)` и `PolarPlot(traces, **layout)` описаны в [справочнике графиков](plot-format.md). Там же перечислен поддержанный поднабор выражений непосредственно внутри графика.
 
+`Worksheet.write()` выполняет статическую проверку перед записью. `Worksheet.check()` возвращает `ValidationReport`; `Worksheet.validate()` выбрасывает `WorksheetValidationError` при ошибках. Параметр `warnings_as_errors=True` позволяет запретить также найденные предупреждения. [Подробный контракт валидации](validation.md).
+
 `validate(path_or_bytes, schema=None)` проверяет структуру и ссылки, а при передаче локальной XSD — схему; ошибки выбрасываются как `ValidationError`. `calculation_errors(path_or_bytes)` читает сохранённые Mathcad ошибки и возвращает `CalculationError`. Ни одна из этих функций не пересчитывает документ. Проверяйте сохранённые результаты и сообщения аудитора; отсутствие `error` само по себе недостаточно.
 
 [Совместимость и результаты пересчёта](compatibility.md), [покрытие книги](book-coverage.md). Исходные примеры в `examples/` содержат готовые сочетания всех основных конструкций.
@@ -97,6 +100,6 @@ expression = B.SIN(phi) + omega**2
 
 `LiteralSubscript` является частью имени переменной: `φ₁₂` отличается от элемента `φ[12]`. Верхняя степень выражается `phi**2`. Греческие буквы можно выбирать через `Greek` (24 строчные и 24 прописные) или передавать Unicode в `Symbol`; автоматической замены латинского `alpha` на `α` нет. Строковые значения формул создаются через `String`, а имена — через `Symbol`. `Function(Symbol('g'), [x])` описывает функцию, этот же объект можно вызывать `g(x)`.
 
-`BuiltinFunction` содержит распространённые встроенные функции и вызывается непосредственно: `BuiltinFunction.LSOLVE(A, b)`. Остальные встроенные и пользовательские функции доступны через `Symbol('имя')(...)`; реестр не ограничивает Mathcad.
+`BuiltinFunction` содержит распространённые встроенные функции и вызывается непосредственно: `BuiltinFunction.LSOLVE(A, b)`. Остальные встроенные и пользовательские функции доступны через `Symbol('имя')(...)`; неизвестные анализатору встроенные функции требуют `ValidationContext` при проверке.
 
 Перечисления: `OperatorKind`, `SolverKind`, `SolverMethod`, `DefinitionKind`, `MatrixStyle`, `NumberFormat`, `LineStyle`, `Marker`, `TextStyle`, `Orientation`. Например, `Solver(SolverKind.FIND)`, `Operator(OperatorKind.CROSS_PRODUCT, a, b)`, `ResultFormat(matrix_style=MatrixStyle.TABLE)`, `Trace(x, y, marker=Marker.CIRCLE)`. Имена переменных, текст, подписи и HEX-цвета остаются текстовыми данными. Дочерние узлы выражений нормализуются в объекты `Expr` при создании: например, `Define(x, 2).rhs` — `Number`. Аннотации и `py.typed` включены в пакет.

@@ -37,6 +37,13 @@ from .expressions import (
 )
 from .layout import LayoutError, ResultShape
 from .plots import PolarPlot, Trace, XYPlot
+from .semantic import (
+    Diagnostic,
+    Severity,
+    ValidationContext,
+    ValidationReport,
+    WorksheetValidationError,
+)
 from .types import (
     BuiltinFunction,
     DefinitionKind,
@@ -64,6 +71,7 @@ __all__ = [
     "Define",
     "DefinitionKind",
     "Derivative",
+    "Diagnostic",
     "Evaluate",
     "Expr",
     "For",
@@ -98,6 +106,7 @@ __all__ = [
     "ResultShape",
     "Return",
     "Sequence",
+    "Severity",
     "Solver",
     "SolverKind",
     "SolverMethod",
@@ -109,9 +118,12 @@ __all__ = [
     "TextStyle",
     "Trace",
     "TryCatch",
+    "ValidationContext",
     "ValidationError",
+    "ValidationReport",
     "While",
     "Worksheet",
+    "WorksheetValidationError",
     "XYPlot",
     "calculation_errors",
     "expr",

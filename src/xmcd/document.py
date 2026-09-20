@@ -11,7 +11,10 @@ import math
 from copy import copy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from .semantic import ValidationContext, ValidationReport
 
 from lxml import etree as ET
 
@@ -484,7 +487,41 @@ class Worksheet:
     def to_bytes(self) -> bytes:
         return ET.tostring(self.to_xml(), encoding="UTF-8", xml_declaration=True, pretty_print=True)
 
-    def write(self, path: str | Path) -> Path:
+    def check(self, *, context: ValidationContext | None = None) -> ValidationReport:
+        """Collect static diagnostics without raising for semantic errors."""
+        from .semantic import check_worksheet
+
+        return check_worksheet(self, context=context)
+
+    def _validated_bytes(self, context, warnings_as_errors, schema):
+        from .validation import validate
+
+        report = self.check(context=context)
+        report.raise_for_errors(warnings_as_errors=warnings_as_errors)
+        data = self.to_bytes()
+        validate(data, schema=schema)
+        return data, report
+
+    def validate(
+        self,
+        *,
+        context: ValidationContext | None = None,
+        warnings_as_errors: bool = False,
+        schema: str | Path | None = None,
+    ) -> ValidationReport:
+        """Raise on static errors, layout or XML errors; return remaining warnings."""
+        return self._validated_bytes(context, warnings_as_errors, schema)[1]
+
+    def write(
+        self,
+        path: str | Path,
+        *,
+        context: ValidationContext | None = None,
+        warnings_as_errors: bool = False,
+        schema: str | Path | None = None,
+    ) -> Path:
+        """Validate before opening the destination, preserving it on validation failure."""
+        data, _ = self._validated_bytes(context, warnings_as_errors, schema)
         path = Path(path)
-        path.write_bytes(self.to_bytes())
+        path.write_bytes(data)
         return path
