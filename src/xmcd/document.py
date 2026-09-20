@@ -1,0 +1,351 @@
+"""Worksheet composition and serialization to classic Mathcad XML 3.0.3.
+
+Coordinates and dimensions use points, relative to the worksheet's content area.
+Serialization does not evaluate expressions or require an installed Mathcad.
+"""
+
+from __future__ import annotations
+
+import base64
+import math
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Protocol
+
+from lxml import etree as ET
+
+WS = "http://schemas.mathsoft.com/worksheet30"
+ML = "http://schemas.mathsoft.com/math30"
+NS = {"ws": WS, "ml": ML}
+
+
+def element(tag: str, /, parent=None, text: str | None = None, **attrs):
+    attributes = {k.replace("_", "-"): str(v) for k, v in attrs.items()}
+    node = ET.Element(f"{{{WS}}}{tag}", attributes)
+    node.text = text
+    if parent is not None:
+        parent.append(node)
+    return node
+
+
+class Expression(Protocol):
+    def to_xml(self) -> ET._Element: ...
+
+
+@dataclass
+class SerializationContext:
+    """Per-write identifiers: reusing a region does not duplicate IDs."""
+
+    region_id: int = 0
+    binaries: list[bytes] = field(default_factory=list)
+
+    def next_region(self) -> int:
+        self.region_id += 1
+        return self.region_id
+
+    def binary(self, data: bytes) -> int:
+        self.binaries.append(data)
+        return len(self.binaries)
+
+
+@dataclass(kw_only=True)
+class Region:
+    left: float = 0
+    top: float = 0
+    width: float = 400
+    height: float = 28
+    tag: str = ""
+    border: bool = False
+
+    def __post_init__(self):
+        for name in ("left", "top", "width", "height"):
+            value = getattr(self, name)
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"{name} must be finite and nonnegative")
+
+    def content_xml(self, context: SerializationContext) -> ET._Element:
+        raise NotImplementedError
+
+    def to_xml(self, context: SerializationContext | None = None) -> ET._Element:
+        context = context if context is not None else SerializationContext()
+        node = element(
+            "region",
+            region_id=context.next_region(),
+            left=self.left,
+            top=self.top,
+            width=self.width,
+            height=self.height,
+            align_x=self.left,
+            align_y=self.top + min(self.height, 12),
+            tag=self.tag,
+            show_border=str(self.border).lower(),
+            is_protected="false",
+        )
+        node.append(self.content_xml(context))
+        return node
+
+
+@dataclass(frozen=True)
+class ResultFormat:
+    precision: int = 6
+    notation: str = "general"
+    matrix_style: str = "matrix"
+
+    def __post_init__(self):
+        if self.notation not in {"general", "decimal", "scientific", "engineering", "fraction"}:
+            raise ValueError("Unsupported result notation")
+        if self.matrix_style not in {"auto", "matrix", "table"}:
+            raise ValueError("matrix_style must be auto, matrix or table")
+        if not isinstance(self.precision, int) or not 0 <= self.precision <= 17:
+            raise ValueError("Mathcad precision must be an integer from 0 to 17")
+
+    def to_xml(self, name="resultFormat"):
+        node = element(name)
+        element(self.notation, node, precision=self.precision)
+        element("matrix", node, display_style=self.matrix_style)
+        return node
+
+
+@dataclass
+class MathRegion(Region):
+    expression: Expression
+    result_format: ResultFormat | None = None
+    disabled: bool = False
+
+    def content_xml(self, context):
+        node = element("math", disable_calc=str(self.disabled).lower())
+        node.append(self.expression.to_xml())
+        if self.result_format is not None:
+            node.append(self.result_format.to_xml())
+        return node
+
+
+@dataclass
+class TextRegion(Region):
+    text: str
+    style: str = "Normal"
+
+    def content_xml(self, context):
+        node = element("text", use_page_width="false", lock_width="true")
+        for line in self.text.split("\n"):
+            element("p", node, text=line, style=self.style)
+        return node
+
+
+@dataclass
+class PageBreak(Region):
+    def content_xml(self, context):
+        return element("pageBreak")
+
+
+@dataclass
+class Area(Region):
+    name: str
+    regions: list[Region] = field(default_factory=list)
+    collapsed: bool = False
+
+    def content_xml(self, context):
+        node = element(
+            "area",
+            name=self.name,
+            is_collapsed=str(self.collapsed).lower(),
+            top_lock_id=context.next_region(),
+            bottom_lock_id=context.next_region(),
+            show_name="true",
+        )
+        node.extend(region.to_xml(context) for region in self.regions)
+        return node
+
+
+@dataclass(frozen=True)
+class PageSettings:
+    paper_code: int = 9  # Windows DMPAPER_A4
+    orientation: str = "portrait"
+    margin_left: float = 36
+    margin_right: float = 36
+    margin_top: float = 36
+    margin_bottom: float = 36
+
+    def __post_init__(self):
+        if self.orientation not in {"portrait", "landscape"}:
+            raise ValueError("orientation must be portrait or landscape")
+        for value in (self.margin_left, self.margin_right, self.margin_top, self.margin_bottom):
+            if not math.isfinite(value) or value < 0:
+                raise ValueError("Page margins must be finite and nonnegative")
+
+
+@dataclass
+class Worksheet:
+    title: str = ""
+    regions: list[Region] = field(default_factory=list)
+    author: str = ""
+    origin: int = 0
+    tolerance: float = 1e-3
+    constraint_tolerance: float = 1e-3
+    page: PageSettings = field(default_factory=PageSettings)
+    result_format: ResultFormat = field(default_factory=ResultFormat)
+    font_size: float = 10
+    _cursor: float = field(default=0, init=False, repr=False)
+
+    def __post_init__(self):
+        if not isinstance(self.origin, int):
+            raise TypeError("origin must be an integer")
+        if not 0 <= self.tolerance <= 1 or not 0 <= self.constraint_tolerance <= 1:
+            raise ValueError("Mathcad tolerances must be between 0 and 1")
+        if not math.isfinite(self.font_size) or self.font_size <= 0:
+            raise ValueError("font_size must be positive and finite")
+
+    def add(self, region: Region) -> Region:
+        if not isinstance(region, Region):
+            raise TypeError("Worksheet accepts Region objects")
+        self.regions.append(region)
+        self._cursor = max(self._cursor, region.top + region.height + 12)
+        return region
+
+    def math(self, expression: Expression, **layout) -> MathRegion:
+        layout.setdefault("top", self._cursor)
+        return self.add(MathRegion(expression, **layout))
+
+    def text(self, text: str, **layout) -> TextRegion:
+        layout.setdefault("top", self._cursor)
+        layout.setdefault("height", max(20, (text.count("\n") + 1) * self.font_size * 1.5))
+        return self.add(TextRegion(text, **layout))
+
+    def define(self, lhs, rhs, **layout) -> MathRegion:
+        from .expressions import Define
+
+        return self.math(Define(lhs, rhs), **layout)
+
+    def evaluate(self, expression, *, unit=None, **layout) -> MathRegion:
+        from .expressions import Evaluate
+
+        return self.math(Evaluate(expression, unit=unit), **layout)
+
+    def _settings(self):
+        settings = element("settings")
+        presentation = element("presentation", settings)
+        text_styles = element("textStyles", element("textRendering", presentation))
+        for name, size, weight in (
+            ("Normal", self.font_size, "normal"),
+            ("Heading 1", self.font_size + 4, "bold"),
+            ("Heading 2", self.font_size + 2, "bold"),
+        ):
+            style = element("textStyle", text_styles, name=name)
+            element("blockAttr", style, text_align="left", margin_left="0", margin_right="0")
+            element(
+                "inlineAttr",
+                style,
+                font_family="Arial",
+                font_size=size,
+                font_weight=weight,
+                font_style="normal",
+                font_charset="0",
+            )
+        rendering = element("mathRendering", presentation, equation_color="#000000")
+        element(
+            "operators",
+            rendering,
+            multiplication="narrow-dot",
+            derivative="derivative",
+            literal_subscript="large",
+            definition="colon-equal",
+            global_definition="triple-equal",
+            local_definition="left-arrow",
+            equality="bold-equal",
+            symbolic_evaluation="right-arrow",
+        )
+        math_styles = element("mathStyles", rendering)
+        for name in (
+            "Variables",
+            "Constants",
+            *(f"User {i}" for i in range(1, 8)),
+            "Math Text Font",
+        ):
+            element(
+                "mathStyle",
+                math_styles,
+                name=name,
+                font_family="Times New Roman",
+                font_size=self.font_size,
+                font_weight="normal",
+                font_style="normal",
+                font_charset="0",
+            )
+        element("dimensionNames", rendering)
+        element("symbolics", rendering)
+        rendering.append(self.result_format.to_xml("results"))
+        page = element(
+            "pageModel",
+            presentation,
+            paper_code=self.page.paper_code,
+            orientation=self.page.orientation,
+        )
+        element(
+            "margins",
+            page,
+            left=self.page.margin_left,
+            right=self.page.margin_right,
+            top=self.page.margin_top,
+            bottom=self.page.margin_bottom,
+        )
+        element(
+            "colorModel",
+            presentation,
+            background_color="#ffffff",
+            default_highlight_color="#ffff80",
+        )
+        element("language", presentation, math="en", UI="en")
+        calculation = element("calculation", settings)
+        element(
+            "builtInVariables",
+            calculation,
+            array_origin=self.origin,
+            convergence_tolerance=self.tolerance,
+            constraint_tolerance=self.constraint_tolerance,
+        )
+        element(
+            "calculationBehavior", calculation, automatic_recalculation="true", exact_boolean="true"
+        )
+        element("currentUnitSystem", element("units", calculation), name="si")
+        editor = element("editor", settings)
+        element("ruler", editor, ruler_unit="in")
+        element("grid", editor, granularity_x="6", granularity_y="6")
+        element(
+            "fileFormat",
+            settings,
+            save_numeric_results="true",
+            exclude_large_results="false",
+            image_type="none",
+            screen_dpi="96",
+        )
+        element("handbook", element("miscellaneous", settings))
+        return settings
+
+    def to_xml(self) -> ET._Element:
+        root = ET.Element(
+            f"{{{WS}}}worksheet", version="3.0.3", nsmap={None: WS, "ws": WS, "ml": ML}
+        )
+        metadata = element("metadata", root)
+        element("generator", metadata, text="xmcd Python library")
+        user = element("userData", metadata)
+        element("title", user, text=self.title)
+        element("author", user, text=self.author)
+        root.append(self._settings())
+        regions = element("regions", root)
+        context = SerializationContext()
+        regions.extend(region.to_xml(context) for region in self.regions)
+        if context.binaries:
+            binaries = element("binaryContent", root)
+            for index, data in enumerate(context.binaries, 1):
+                element(
+                    "item", binaries, text=base64.b64encode(data).decode("ascii"), item_id=index
+                )
+        return root
+
+    def to_bytes(self) -> bytes:
+        return ET.tostring(self.to_xml(), encoding="UTF-8", xml_declaration=True, pretty_print=True)
+
+    def write(self, path: str | Path) -> Path:
+        path = Path(path)
+        path.write_bytes(self.to_bytes())
+        return path

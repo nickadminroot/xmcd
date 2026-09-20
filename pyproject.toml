@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xmcd"
+version = "0.1.0"
+description = "Procedural Mathcad XML worksheets without Mathcad or COM"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "lxml>=6.1.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xmcd"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+]
