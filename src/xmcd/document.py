@@ -160,7 +160,26 @@ class Area(Region):
             bottom_lock_id=context.next_region(),
             show_name="true",
         )
-        node.extend(region.to_xml(context) for region in self.regions)
+
+        def translate(child):
+            for attr, offset in (
+                ("left", self.left),
+                ("align-x", self.left),
+                ("top", self.top),
+                ("align-y", self.top),
+            ):
+                child.set(attr, str(float(child.get(attr)) + offset))
+            nested = child.find("ws:area", NS)
+            if nested is not None and nested.get("is-collapsed") == "false":
+                for descendant in nested:
+                    translate(descendant)
+
+        for region in self.regions:
+            child = region.to_xml(context)
+            # Expanded areas use worksheet coordinates; collapsed ones use local coordinates.
+            if not self.collapsed:
+                translate(child)
+            node.append(child)
         return node
 
 

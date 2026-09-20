@@ -114,6 +114,12 @@ class Expr:
     def sqrt(self):
         return Operator("sqrt", self)
 
+    def nth_root(self, degree):
+        return Operator("nthRoot", degree, self)
+
+    def log(self, base):
+        return Operator("log", base, self)
+
     def factorial(self):
         return Operator("factorial", self)
 
@@ -303,6 +309,10 @@ class Operator(Expr):
         object.__setattr__(self, "arguments", tuple(expr(a) for a in arguments))
 
     def to_xml(self):
+        if self.name == "matrow":
+            # The schema declares matrow, but classic Mathcad rejects that region.
+            matrix, index = self.arguments
+            return matrix.T.column(index).T.to_xml()
         return node(
             "apply",
             node(self.name),

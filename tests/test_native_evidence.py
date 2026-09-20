@@ -289,3 +289,42 @@ def test_native_plot_expressions_and_point_markers():
         "compound-operators",
         "point-markers",
     ]
+
+
+def test_native_advanced_operators_and_retained_area_definitions():
+    path = Path(__file__).parent / "fixtures/advanced-mathcad14.xmcd"
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+    expected = {
+        "area-value-7": [7],
+        "hidden-value-13": [13],
+        "global-before-definition-11": [11],
+        "row-1-2": [1, 2],
+        "cross-0-0-1": [0, 0, 1],
+        "vector-sum-6": [6],
+        "product-120": [120],
+        "factorial-120": [120],
+        "fifth-root-2": [2],
+        "base2-log-3": [3],
+        "abs-5": [5],
+        "string-length-7": [7],
+        "odesolve-e": [math.e],
+    }
+    for tag, values in expected.items():
+        actual = root.xpath(
+            "//ws:region[@tag=$tag]//ml:result//ml:real/text()", tag=tag, namespaces=NS
+        )
+        assert len(actual) == len(values), tag
+        assert all(
+            math.isclose(float(a), b, rel_tol=2e-6, abs_tol=1e-10) for a, b in zip(actual, values)
+        ), tag
+    assert root.xpath(
+        '//ws:area[@is-collapsed="true"]//ml:define[ml:id="hidden"]/ml:real/text()', namespaces=NS
+    ) == ["13"]
+    assert root.xpath(
+        '//ws:area[@is-collapsed="false"]//ml:define[ml:id="a"]/ml:real/text()', namespaces=NS
+    ) == ["5"]
+    assert len(root.findall(".//ws:pageBreak", NS)) == 1
+    assert root.xpath(
+        '//ws:region[@tag="complex-2-minus3i"]//ml:complex/ml:imag/text()', namespaces=NS
+    ) == ["-3"]

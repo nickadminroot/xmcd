@@ -68,3 +68,20 @@ def test_native_schema_when_available():
     sheet.text("Independent worksheet")
     sheet.add(Area("Nested", [TextRegion("Text")], top=80))
     validate(sheet.to_bytes(), schema=schema)
+
+
+def test_nested_area_coordinate_spaces_and_reuse():
+    from xmcd import Define, MathRegion
+
+    formula = MathRegion(Define("a", 5), top=30, left=10)
+    hidden = Area("Hidden", [formula], top=50, left=20, collapsed=True)
+    opened = Area("Open", [formula, hidden], top=100, left=40)
+    root = Worksheet(regions=[opened]).to_xml()
+    outer = root.find("ws:regions/ws:region/ws:area", NS)
+    assert float(outer[0].get("top")) == 130
+    assert float(outer[0].get("left")) == 50
+    assert float(outer[1].get("top")) == 150
+    local = outer[1].find("ws:area/ws:region", NS)
+    assert float(local.get("top")) == 30
+    assert float(local.get("left")) == 10
+    assert formula.top == 30 and hidden.top == 50
