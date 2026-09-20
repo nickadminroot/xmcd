@@ -34,3 +34,16 @@ def test_native_core_has_every_expected_numeric_result():
     assert all(
         math.isclose(actual[k], v, rel_tol=1e-10, abs_tol=1e-10) for k, v in expected.items()
     )
+
+
+def test_native_solve_blocks_have_saved_solutions():
+    path = Path(__file__).parent / "fixtures/solvers-mathcad14.xmcd"
+    validate(path)
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+    vector = root.xpath(
+        "//ws:region[@tag='solution-3-2']//ml:result/ml:matrix/ml:real", namespaces=NS
+    )
+    scalar = root.xpath("//ws:region[@tag='parameterized-3']//ml:result/ml:real", namespaces=NS)
+    assert [float(n.text) for n in vector] == [3, 2]
+    assert [float(n.text) for n in scalar] == [3]

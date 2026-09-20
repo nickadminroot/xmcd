@@ -283,6 +283,45 @@ class Functions:
 f = Functions()
 
 
+@dataclass(frozen=True, eq=False)
+class Given(Expr):
+    """Start a solve block. Place guesses before it and constraints after it."""
+
+    def to_xml(self):
+        return Symbol("Given").to_xml()
+
+
+@dataclass(frozen=True, eq=False)
+class Solver(Expr):
+    """Native solve terminator, called like Solver('Find')(x, y).
+
+    Keep this distinct from an ordinary function named Find: Mathcad stores
+    solver options on a dedicated operator in the expression tree.
+    """
+
+    name: str = "Find"
+    method: str | None = None
+
+    def __post_init__(self):
+        if self.name not in {"Find", "Minerr", "Minimize", "Maximize", "Odesolve"}:
+            raise ValueError("Unknown solve terminator")
+        methods = (
+            {"fixed", "adaptive", "radau", "adams/bdf (auto)"}
+            if self.name == "Odesolve"
+            else {"linear", "conjugate", "newton", "quadratic", "levenberg"}
+        )
+        if self.method is not None and self.method not in methods:
+            raise ValueError(f"Unsupported method for {self.name}: {self.method}")
+
+    def to_xml(self):
+        attrs = {}
+        if self.method is not None:
+            attrs["method"] = self.method
+            if self.name != "Odesolve":
+                attrs["auto-method"] = "false"
+        return node(self.name, **attrs)
+
+
 @dataclass(frozen=True, eq=False, init=False)
 class Matrix(Expr):
     rows: tuple[tuple[Expr, ...], ...]
