@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from xmcd import Range, Symbol, Trace, Worksheet, f
+from xmcd import BuiltinFunction, LineStyle, Range, Symbol, Trace, Worksheet
 
 
 def build():
@@ -11,9 +11,9 @@ def build():
     sheet.text("Native plots: functions and parametric trajectory", top=24)
     sheet.define(t, Range(0, 6.28, second=0.02))
     sheet.plot(
-        Trace(t, f.sin(t), color="#ff0000"),
-        Trace(t, f.cos(t), color="#0000ff"),
-        Trace(t, t / 10, color="#008000", style="dash"),
+        Trace(t, BuiltinFunction.SIN(t), color="#ff0000"),
+        Trace(t, BuiltinFunction.COS(t), color="#0000ff"),
+        Trace(t, t / 10, color="#008000", style=LineStyle.DASH),
         top=110,
         left=30,
         width=360,
@@ -21,7 +21,7 @@ def build():
         tag="functions",
     )
     sheet.plot(
-        Trace(f.cos(t), f.sin(t), color="#800080"),
+        Trace(BuiltinFunction.COS(t), BuiltinFunction.SIN(t), color="#800080"),
         top=410,
         left=30,
         width=320,

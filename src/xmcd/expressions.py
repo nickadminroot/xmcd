@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 from numbers import Real
+from typing import TypeAlias
 
 from lxml import etree as ET
+
+from .types import DefinitionKind, LiteralSubscript, OperatorKind, SolverKind, SolverMethod
 
 ML = "http://schemas.mathsoft.com/math30"
 
@@ -26,129 +30,141 @@ class Expr:
     def __bool__(self):
         raise TypeError("Mathcad expressions have no Python truth value; use explicit comparisons")
 
-    def __add__(self, other):
-        return Operator("plus", self, other)
+    def __add__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.ADD, self, other)
 
-    def __radd__(self, other):
-        return Operator("plus", other, self)
+    def __radd__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.ADD, other, self)
 
-    def __sub__(self, other):
-        return Operator("minus", self, other)
+    def __sub__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.SUBTRACT, self, other)
 
-    def __rsub__(self, other):
-        return Operator("minus", other, self)
+    def __rsub__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.SUBTRACT, other, self)
 
-    def __mul__(self, other):
-        return Operator("mult", self, other)
+    def __mul__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.MULTIPLY, self, other)
 
-    def __rmul__(self, other):
-        return Operator("mult", other, self)
+    def __rmul__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.MULTIPLY, other, self)
 
-    def __truediv__(self, other):
-        return Operator("div", self, other)
+    def __truediv__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.DIVIDE, self, other)
 
-    def __rtruediv__(self, other):
-        return Operator("div", other, self)
+    def __rtruediv__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.DIVIDE, other, self)
 
-    def __pow__(self, other):
-        return Operator("pow", self, other)
+    def __pow__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.POWER, self, other)
 
-    def __rpow__(self, other):
-        return Operator("pow", other, self)
+    def __rpow__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.POWER, other, self)
 
-    def __neg__(self):
-        return Operator("neg", self)
+    def __neg__(self) -> Operator:
+        return Operator(OperatorKind.NEGATE, self)
 
-    def __abs__(self):
-        return Operator("absval", self)
+    def __abs__(self) -> Operator:
+        return Operator(OperatorKind.ABS, self)
 
-    def __lt__(self, other):
-        return Operator("lessThan", self, other)
+    def __lt__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.LESS_THAN, self, other)
 
-    def __le__(self, other):
-        return Operator("lessOrEqual", self, other)
+    def __le__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.LESS_OR_EQUAL, self, other)
 
-    def __gt__(self, other):
-        return Operator("greaterThan", self, other)
+    def __gt__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.GREATER_THAN, self, other)
 
-    def __ge__(self, other):
-        return Operator("greaterOrEqual", self, other)
+    def __ge__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.GREATER_OR_EQUAL, self, other)
 
-    def eq(self, other):
-        return Operator("equal", self, other)
+    def eq(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.EQUAL, self, other)
 
-    def ne(self, other):
-        return Operator("notEqual", self, other)
+    def ne(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.NOT_EQUAL, self, other)
 
-    def __and__(self, other):
-        return Operator("and", self, other)
+    def __and__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.AND, self, other)
 
-    def __or__(self, other):
-        return Operator("or", self, other)
+    def __or__(self, other: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.OR, self, other)
 
-    def __invert__(self):
-        return Operator("not", self)
+    def __invert__(self) -> Operator:
+        return Operator(OperatorKind.NOT, self)
 
-    def __getitem__(self, index):
+    def __getitem__(
+        self, index: ExpressionInput | tuple[ExpressionInput, ExpressionInput]
+    ) -> Operator:
         if isinstance(index, tuple):
             if len(index) != 2:
                 raise ValueError("Matrix indexing requires (row, column)")
             index = Sequence(*index)
-        return Operator("indexer", self, index)
+        return Operator(OperatorKind.INDEX, self, index)
 
-    def column(self, index):
-        return Operator("matcol", self, index)
+    def column(self, index: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.COLUMN, self, index)
 
-    def row(self, index):
-        return Operator("matrow", self, index)
+    def row(self, index: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.ROW, self, index)
 
-    def vectorize(self):
-        return Operator("vectorize", self)
+    def vectorize(self) -> Operator:
+        return Operator(OperatorKind.VECTORIZE, self)
 
-    def determinant(self):
-        return Operator("determinant", self)
+    def determinant(self) -> Operator:
+        return Operator(OperatorKind.DETERMINANT, self)
 
-    def conjugate(self):
-        return Operator("conjugate", self)
+    def conjugate(self) -> Operator:
+        return Operator(OperatorKind.CONJUGATE, self)
 
-    def sqrt(self):
-        return Operator("sqrt", self)
+    def sqrt(self) -> Operator:
+        return Operator(OperatorKind.SQRT, self)
 
-    def nth_root(self, degree):
-        return Operator("nthRoot", degree, self)
+    def nth_root(self, degree: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.NTH_ROOT, degree, self)
 
-    def log(self, base):
-        return Operator("log", base, self)
+    def log(self, base: ExpressionInput) -> Operator:
+        return Operator(OperatorKind.LOG, base, self)
 
-    def factorial(self):
-        return Operator("factorial", self)
+    def factorial(self) -> Operator:
+        return Operator(OperatorKind.FACTORIAL, self)
 
-    def parens(self):
+    def parens(self) -> Parens:
         return Parens(self)
 
-    def __call__(self, *arguments):
+    def __call__(self, *arguments: ExpressionInput) -> Call:
         return Call(self, *arguments)
 
     @property
-    def T(self):
-        return Operator("transpose", self)
+    def T(self) -> Operator:
+        return Operator(OperatorKind.TRANSPOSE, self)
 
 
-def expr(value) -> Expr:
+ExpressionInput: TypeAlias = Expr | int | float | complex | Decimal
+
+
+def expr(value: ExpressionInput) -> Expr:
     if isinstance(value, Expr):
         return value
-    if isinstance(value, str):
-        return Symbol(value)
     if isinstance(value, (Real, Decimal)):
         return Number(value)
     if isinstance(value, complex):
-        return Number(value.real) + Operator("mult", Number(value.imag), Imaginary(1))
+        return Number(value.real) + Operator(
+            OperatorKind.MULTIPLY, Number(value.imag), Imaginary(1)
+        )
     raise TypeError(f"Cannot convert {type(value).__name__} to a Mathcad expression")
+
+
+def _coerce_fields(instance, *names):
+    for name in names:
+        value = getattr(instance, name)
+        if value is not None:
+            object.__setattr__(instance, name, expr(value))
 
 
 @dataclass(frozen=True, eq=False)
 class Number(Expr):
-    value: Real | Decimal
+    value: int | float | Decimal
 
     def __post_init__(self):
         if not isinstance(self.value, (Real, Decimal)) or not math.isfinite(self.value):
@@ -169,16 +185,18 @@ class Imaginary(Number):
 @dataclass(frozen=True, eq=False)
 class Symbol(Expr):
     name: str
-    subscript: str | None = None
+    subscript: LiteralSubscript | None = None
 
     def __post_init__(self):
         if not isinstance(self.name, str) or not self.name:
             raise ValueError("Symbol name must be a nonempty string")
+        if self.subscript is not None and not isinstance(self.subscript, LiteralSubscript):
+            raise TypeError("subscript must be a LiteralSubscript")
 
     def to_xml(self):
         attrs = {"{http://www.w3.org/XML/1998/namespace}space": "preserve"}
         if self.subscript is not None:
-            attrs["subscript"] = self.subscript
+            attrs["subscript"] = self.subscript.text
         return node("id", text=self.name, **attrs)
 
 
@@ -298,10 +316,12 @@ BINARY = frozenset(
 
 @dataclass(frozen=True, eq=False, init=False)
 class Operator(Expr):
-    name: str
+    name: OperatorKind
     arguments: tuple[Expr, ...]
 
-    def __init__(self, name, *arguments):
+    def __init__(self, name: OperatorKind, *arguments: ExpressionInput):
+        if not isinstance(name, OperatorKind):
+            raise TypeError("Operator name must be an OperatorKind")
         count = 1 if name in UNARY else 2 if name in BINARY else None
         if count is None or len(arguments) != count:
             raise ValueError(f"Unknown operator or wrong arity: {name} ({len(arguments)})")
@@ -327,7 +347,7 @@ class Operator(Expr):
 class Sequence(Expr):
     values: tuple[Expr, ...]
 
-    def __init__(self, *values):
+    def __init__(self, *values: ExpressionInput):
         if len(values) < 2:
             raise ValueError("A sequence requires at least two values")
         object.__setattr__(self, "values", tuple(expr(a) for a in values))
@@ -341,7 +361,7 @@ class Call(Expr):
     function: Expr
     arguments: tuple[Expr, ...]
 
-    def __init__(self, function, *arguments):
+    def __init__(self, function: Expr, *arguments: ExpressionInput):
         if not arguments:
             raise ValueError("Mathcad calls require at least one argument")
         object.__setattr__(self, "function", expr(function))
@@ -350,21 +370,6 @@ class Call(Expr):
     def to_xml(self):
         argument = self.arguments[0] if len(self.arguments) == 1 else Sequence(*self.arguments)
         return node("apply", self.function, argument)
-
-
-class Functions:
-    """Open function namespace: f.sin(x), f.lsolve(A, b), f['custom-name'](x)."""
-
-    def __getattr__(self, name):
-        if name.startswith("_"):
-            raise AttributeError(name)
-        return Symbol(name)
-
-    def __getitem__(self, name):
-        return Symbol(name)
-
-
-f = Functions()
 
 
 @dataclass(frozen=True, eq=False)
@@ -377,18 +382,22 @@ class Given(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Solver(Expr):
-    """Native solve terminator, called like Solver('Find')(x, y).
+    """Native solve terminator, called like Solver(SolverKind.FIND)(x, y).
 
     Keep this distinct from an ordinary function named Find: Mathcad stores
     solver options on a dedicated operator in the expression tree.
     """
 
-    name: str = "Find"
-    method: str | None = None
+    name: SolverKind = SolverKind.FIND
+    method: SolverMethod | None = None
 
     def __post_init__(self):
+        if not isinstance(self.name, SolverKind):
+            raise TypeError("Solver name must be a SolverKind")
         if self.name not in {"Find", "Minerr", "Minimize", "Maximize", "Odesolve"}:
             raise ValueError("Unknown solve terminator")
+        if self.method is not None and not isinstance(self.method, SolverMethod):
+            raise TypeError("Solver method must be a SolverMethod")
         methods = (
             {"fixed", "adaptive", "radau", "adams/bdf (auto)"}
             if self.name == "Odesolve"
@@ -410,14 +419,14 @@ class Solver(Expr):
 class Matrix(Expr):
     rows: tuple[tuple[Expr, ...], ...]
 
-    def __init__(self, rows):
+    def __init__(self, rows: Iterable[Iterable[ExpressionInput]]):
         rows = tuple(tuple(expr(a) for a in row) for row in rows)
         if not rows or not rows[0] or any(len(r) != len(rows[0]) for r in rows):
             raise ValueError("Matrix must be nonempty and rectangular")
         object.__setattr__(self, "rows", rows)
 
     @classmethod
-    def vector(cls, values):
+    def vector(cls, values: Iterable[ExpressionInput]):
         return cls([[v] for v in values])
 
     def to_xml(self):
@@ -431,9 +440,12 @@ class Matrix(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Range(Expr):
-    start: object
-    stop: object
-    second: object | None = None
+    start: ExpressionInput
+    stop: ExpressionInput
+    second: ExpressionInput | None = None
+
+    def __post_init__(self):
+        _coerce_fields(self, "start", "stop", "second")
 
     def to_xml(self):
         start = expr(self.start) if self.second is None else Sequence(self.start, self.second)
@@ -442,28 +454,36 @@ class Range(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Function(Expr):
-    name: object
-    parameters: tuple
+    name: Symbol
+    parameters: Iterable[Symbol]
 
     def __post_init__(self):
+        object.__setattr__(self, "name", expr(self.name))
+        if not isinstance(self.name, Symbol):
+            raise TypeError("Function name must be a Symbol")
+        object.__setattr__(self, "parameters", tuple(expr(v) for v in self.parameters))
         if not self.parameters:
             raise ValueError("Function needs parameters")
-        object.__setattr__(self, "parameters", tuple(expr(v) for v in self.parameters))
         if any(not isinstance(v, Symbol) for v in self.parameters):
             raise TypeError("Function parameters must be symbols")
 
     def to_xml(self):
         return node("function", expr(self.name), node("boundVars", *self.parameters))
 
-    def __call__(self, *arguments):
+    def __call__(self, *arguments: ExpressionInput) -> Call:
         return Call(self.name, *arguments)
 
 
 @dataclass(frozen=True, eq=False)
 class Define(Expr):
-    lhs: object
-    rhs: object
-    kind: str = "normal"
+    lhs: ExpressionInput
+    rhs: ExpressionInput
+    kind: DefinitionKind = DefinitionKind.NORMAL
+
+    def __post_init__(self):
+        if not isinstance(self.kind, DefinitionKind):
+            raise TypeError("Definition kind must be a DefinitionKind")
+        _coerce_fields(self, "lhs", "rhs")
 
     def to_xml(self):
         kinds = {"normal": "define", "local": "localDefine", "global": "globalDefine"}
@@ -474,8 +494,11 @@ class Define(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Evaluate(Expr):
-    expression: object
-    unit: object | None = None
+    expression: ExpressionInput
+    unit: ExpressionInput | None = None
+
+    def __post_init__(self):
+        _coerce_fields(self, "expression", "unit")
 
     def to_xml(self):
         result = node("eval", expr(self.expression))
@@ -485,23 +508,30 @@ class Evaluate(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Symbolic(Expr):
-    expression: object
-    commands: tuple = ()
+    expression: ExpressionInput
+    commands: tuple[Expr, ...] = ()
+
+    def __post_init__(self):
+        _coerce_fields(self, "expression")
+        if any(not isinstance(command, Expr) for command in self.commands):
+            raise TypeError("Symbolic commands must be expressions (Symbol or Sequence)")
+        object.__setattr__(self, "commands", tuple(self.commands))
 
     def to_xml(self):
         result = node("symEval", expr(self.expression))
         for command in self.commands:
-            result.append(
-                node("command", Sequence(*command) if isinstance(command, tuple) else expr(command))
-            )
+            result.append(node("command", command))
         return result
 
 
 @dataclass(frozen=True, eq=False)
 class Derivative(Expr):
-    expression: object
-    variable: object
-    degree: object = 1
+    expression: ExpressionInput
+    variable: ExpressionInput
+    degree: ExpressionInput = 1
+
+    def __post_init__(self):
+        _coerce_fields(self, "expression", "variable", "degree")
 
     def to_xml(self):
         return node(
@@ -514,11 +544,14 @@ class Derivative(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Integral(Expr):
-    expression: object
-    variable: object
-    lower: object | None = None
-    upper: object | None = None
+    expression: ExpressionInput
+    variable: ExpressionInput
+    lower: ExpressionInput | None = None
+    upper: ExpressionInput | None = None
     _operator = "integral"
+
+    def __post_init__(self):
+        _coerce_fields(self, "expression", "variable", "lower", "upper")
 
     def to_xml(self):
         if (self.lower is None) != (self.upper is None):
@@ -545,7 +578,7 @@ class Product(Integral):
 class Program(Expr):
     statements: tuple[Expr, ...]
 
-    def __init__(self, *statements):
+    def __init__(self, *statements: ExpressionInput):
         if len(statements) < 2:
             raise ValueError("Native programs require at least two statements")
         object.__setattr__(self, "statements", tuple(expr(s) for s in statements))
@@ -556,8 +589,11 @@ class Program(Expr):
 
 @dataclass(frozen=True, eq=False)
 class If(Expr):
-    condition: object
-    value: object
+    condition: ExpressionInput
+    value: ExpressionInput
+
+    def __post_init__(self):
+        _coerce_fields(self, "condition", "value")
 
     def to_xml(self):
         return node("ifThen", expr(self.condition), expr(self.value))
@@ -565,7 +601,10 @@ class If(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Otherwise(Expr):
-    value: object
+    value: ExpressionInput
+
+    def __post_init__(self):
+        _coerce_fields(self, "value")
 
     def to_xml(self):
         return node("otherwise", expr(self.value))
@@ -573,9 +612,12 @@ class Otherwise(Expr):
 
 @dataclass(frozen=True, eq=False)
 class For(Expr):
-    variable: object
-    values: object
-    body: object
+    variable: ExpressionInput
+    values: ExpressionInput
+    body: ExpressionInput
+
+    def __post_init__(self):
+        _coerce_fields(self, "variable", "values", "body")
 
     def to_xml(self):
         return node("for", expr(self.variable), expr(self.values), expr(self.body))
@@ -583,8 +625,11 @@ class For(Expr):
 
 @dataclass(frozen=True, eq=False)
 class While(Expr):
-    condition: object
-    body: object
+    condition: ExpressionInput
+    body: ExpressionInput
+
+    def __post_init__(self):
+        _coerce_fields(self, "condition", "body")
 
     def to_xml(self):
         return node("while", expr(self.condition), expr(self.body))
@@ -592,7 +637,10 @@ class While(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Return(Expr):
-    value: object
+    value: ExpressionInput
+
+    def __post_init__(self):
+        _coerce_fields(self, "value")
 
     def to_xml(self):
         return node("return", expr(self.value))
@@ -612,8 +660,11 @@ class Continue(Expr):
 
 @dataclass(frozen=True, eq=False)
 class TryCatch(Expr):
-    expression: object
-    fallback: object
+    expression: ExpressionInput
+    fallback: ExpressionInput
+
+    def __post_init__(self):
+        _coerce_fields(self, "expression", "fallback")
 
     def to_xml(self):
         return node("tryCatch", expr(self.expression), expr(self.fallback))

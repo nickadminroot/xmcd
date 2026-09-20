@@ -1,6 +1,7 @@
 import pytest
 from lxml import etree as ET
 
+from xmcd import Symbol
 from xmcd.document import NS, Area, PageSettings, ResultFormat, TextRegion, Worksheet
 from xmcd.validation import ValidationError, validate
 
@@ -52,7 +53,7 @@ def test_validation_rejects_dtd():
 
 
 def test_formats_and_settings_reject_invalid_values():
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         ResultFormat(notation="float")
     with pytest.raises(ValueError):
         Worksheet(tolerance=2)
@@ -73,7 +74,7 @@ def test_native_schema_when_available():
 def test_nested_area_coordinate_spaces_and_reuse():
     from xmcd import Define, MathRegion
 
-    formula = MathRegion(Define("a", 5), top=30, left=10)
+    formula = MathRegion(Define(Symbol("a"), 5), top=30, left=10)
     hidden = Area("Hidden", [formula], top=50, left=20, collapsed=True)
     opened = Area("Open", [formula, hidden], top=100, left=40)
     root = Worksheet(regions=[opened]).to_xml()

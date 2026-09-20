@@ -1,20 +1,20 @@
 # Нативные графики
 
-`XYPlot` сериализует редактируемый XY-график Mathcad. Трасса `Trace(x, y)` связывает две координаты: векторы, диапазоны или вызовы функций. Параметрическая траектория и годограф задаются тем же способом, например `Trace(f.cos(t), f.sin(t))`.
+`XYPlot` сериализует редактируемый XY-график Mathcad. Трасса `Trace(x, y)` связывает две координаты: векторы, диапазоны или вызовы функций. Параметрическая траектория и годограф задаются тем же способом, например `Trace(B.COS(t), B.SIN(t))`.
 
 ```python
-from xmcd import Worksheet, Symbol, Range, Trace, f
+from xmcd import Worksheet, Symbol, Range, Trace, BuiltinFunction as B
 
 t = Symbol("t")
 sheet = Worksheet()
 sheet.define(t, Range(0, 6.28, second=0.02))
-sheet.plot(Trace(t, f.sin(t), color="#ff0000"),
-           Trace(t, f.cos(t), color="#0000ff"),
+sheet.plot(Trace(t, B.SIN(t), color="#ff0000"),
+           Trace(t, B.COS(t), color="#0000ff"),
            width=360, height=240)
 sheet.write("curves.xmcd")
 ```
 
-`x_bounds` и `y_bounds` принимают `(минимум, максимум)`; `None` включает автоматический предел. Стили трасс: `solid`, `dash`, `dot`, `dash-dot`. `marker` принимает `none`, `cross`, `plus`, `square`, `diamond`, `circle`, `triangle` и залитые варианты `filled-square`, `filled-diamond`, `filled-circle`, `filled-triangle`. `x_grid=True` и `y_grid=True` включают сетку. Цвет — `#RRGGBB`. Размер округляется к внутренней сетке Mathcad; окончательная ширина зависит также от подписей осей.
+`x_bounds` и `y_bounds` принимают `(минимум, максимум)`; `None` включает автоматический предел. Стили трасс задаёт `LineStyle`: `SOLID`, `DASH`, `DOT`, `DASH_DOT`. `marker` принимает `Marker`: `NONE`, `CROSS`, `PLUS`, `SQUARE`, `DIAMOND`, `CIRCLE`, `TRIANGLE` и залитые варианты `FILLED_SQUARE`, `FILLED_DIAMOND`, `FILLED_CIRCLE`, `FILLED_TRIANGLE`. `x_grid=True` и `y_grid=True` включают сетку. Цвет — `#RRGGBB`. Размер округляется к внутренней сетке Mathcad; окончательная ширина зависит также от подписей осей.
 
 ## Устройство
 

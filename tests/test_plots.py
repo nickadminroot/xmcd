@@ -5,12 +5,18 @@ from pathlib import Path
 
 import pytest
 
-from xmcd import Symbol, Trace, Worksheet, XYPlot, f, validate
+from xmcd import BuiltinFunction, Marker, Symbol, Trace, Worksheet, XYPlot, validate
 from xmcd.document import NS
 
 
 def test_graph_reuse_has_independent_binary_references():
-    plot = XYPlot([Trace("t", f.sin("t")), Trace("t", f.cos("t"))])
+    plot = XYPlot(
+        [
+            Trace(Symbol("t"), BuiltinFunction.SIN(Symbol("t"))),
+            Trace(Symbol("t"), BuiltinFunction.COS(Symbol("t"))),
+        ],
+        top=0,
+    )
     sheet = Worksheet()
     sheet.add(plot)
     sheet.add(plot)
@@ -32,25 +38,29 @@ def test_native_plot_schema():
         pytest.skip("Requires local PTC schemas")
     sheet = Worksheet()
     t = Symbol("t")
-    sheet.plot(Trace(f.cos(t), f.sin(t)), x_bounds=(-1.2, 1.2), y_bounds=(-1.2, 1.2))
+    sheet.plot(
+        Trace(BuiltinFunction.COS(t), BuiltinFunction.SIN(t)),
+        x_bounds=(-1.2, 1.2),
+        y_bounds=(-1.2, 1.2),
+    )
     validate(sheet.to_bytes(), schema=schema)
 
 
 def test_invalid_plot_values_fail_before_serialization():
     with pytest.raises(ValueError, match="color"):
-        Trace("x", "y", color="red")
+        Trace(Symbol("x"), Symbol("y"), color="red")
     with pytest.raises(ValueError, match="Trace"):
         XYPlot([])
     with pytest.raises(ValueError, match="maximum"):
-        XYPlot([Trace("x", "y")], x_bounds=(3, 1))
+        XYPlot([Trace(Symbol("x"), Symbol("y"))], x_bounds=(3, 1))
 
 
 def test_polar_graph_has_its_own_coordinate_system():
     from xmcd import PolarPlot
     from xmcd._plot_binary import graph_bytes
 
-    polar = graph_bytes(PolarPlot([Trace("a", "r")]))
-    xy = graph_bytes(XYPlot([Trace("a", "r")]))
+    polar = graph_bytes(PolarPlot([Trace(Symbol("a"), Symbol("r"))], top=0, height=220))
+    xy = graph_bytes(XYPlot([Trace(Symbol("a"), Symbol("r"))], top=0, height=220))
     assert b"\x06\x20\x00\x00" in polar
     assert b"\x02\x20\x00\x00" in xy
     assert len(polar) < len(xy)
@@ -78,7 +88,7 @@ def test_compact_archive_integer_boundaries(value, encoded):
 def test_plot_arithmetic_grouping_and_markers_are_serializable():
     t = Symbol("t")
     sheet = Worksheet()
-    sheet.plot(Trace(t, (t + 1) * (t - 2), marker="circle"), x_grid=True, y_grid=True)
+    sheet.plot(Trace(t, (t + 1) * (t - 2), marker=Marker.CIRCLE), x_grid=True, y_grid=True)
     validate(sheet.to_bytes())
-    with pytest.raises(ValueError, match="marker"):
+    with pytest.raises(TypeError, match="marker"):
         Trace(t, t, marker="unknown")

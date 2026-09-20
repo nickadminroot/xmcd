@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from xmcd import Range, Symbol, Trace, Worksheet
+from xmcd import LineStyle, Marker, Range, Symbol, Trace, Worksheet
 
 
 def build():
@@ -10,8 +10,8 @@ def build():
     t = Symbol("t")
     w.define(t, Range(-3, 3, second=-2.9))
     w.plot(
-        Trace(t, (t + 1) * (t - 2), marker="circle"),
-        Trace(t, -t, style="dash"),
+        Trace(t, (t + 1) * (t - 2), marker=Marker.CIRCLE),
+        Trace(t, -t, style=LineStyle.DASH),
         left=70,
         width=350,
         height=250,
@@ -20,18 +20,7 @@ def build():
         tag="compound-operators",
     )
     w.text("Маркеры: крест, плюс, квадрат, ромб, круг, треугольник; четыре залитых фигуры.")
-    markers = [
-        "cross",
-        "plus",
-        "square",
-        "diamond",
-        "circle",
-        "triangle",
-        "filled-square",
-        "filled-diamond",
-        "filled-circle",
-        "filled-triangle",
-    ]
+    markers = [marker for marker in Marker if marker is not Marker.NONE]
     w.plot(
         *(Trace(i, 0, marker=marker, color="#000000") for i, marker in enumerate(markers, 1)),
         left=70,

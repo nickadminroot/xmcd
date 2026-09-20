@@ -8,11 +8,16 @@ from __future__ import annotations
 
 import base64
 import math
+from copy import copy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
 from lxml import etree as ET
+
+from .expressions import ExpressionInput
+from .layout import LayoutError, ResultShape, ShapeContext, math_metrics
+from .types import MatrixStyle, NumberFormat, Orientation, TextStyle
 
 WS = "http://schemas.mathsoft.com/worksheet30"
 ML = "http://schemas.mathsoft.com/math30"
@@ -51,22 +56,31 @@ class SerializationContext:
 @dataclass(kw_only=True)
 class Region:
     left: float = 0
-    top: float = 0
+    top: float | None = None
     width: float = 400
-    height: float = 28
+    height: float | None = None
     tag: str = ""
     border: bool = False
+    _auto_top: bool = field(init=False, repr=False)
+    _auto_height: bool = field(init=False, repr=False)
+    _axis: float | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
+        self._auto_top = self.top is None
+        self._auto_height = self.height is None
         for name in ("left", "top", "width", "height"):
             value = getattr(self, name)
-            if not math.isfinite(value) or value < 0:
+            if value is not None and (not math.isfinite(value) or value < 0):
                 raise ValueError(f"{name} must be finite and nonnegative")
 
     def content_xml(self, context: SerializationContext) -> ET._Element:
         raise NotImplementedError
 
     def to_xml(self, context: SerializationContext | None = None) -> ET._Element:
+        if self.height is None or self.top is None:
+            resolved = copy(self)
+            _place(resolved, ShapeContext(), 10, 0)
+            return resolved.to_xml(context)
         context = context if context is not None else SerializationContext()
         node = element(
             "region",
@@ -88,14 +102,14 @@ class Region:
 @dataclass(frozen=True)
 class ResultFormat:
     precision: int = 6
-    notation: str = "general"
-    matrix_style: str = "matrix"
+    notation: NumberFormat = NumberFormat.GENERAL
+    matrix_style: MatrixStyle = MatrixStyle.MATRIX
 
     def __post_init__(self):
-        if self.notation not in {"general", "decimal", "scientific", "engineering", "fraction"}:
-            raise ValueError("Unsupported result notation")
-        if self.matrix_style not in {"auto", "matrix", "table"}:
-            raise ValueError("matrix_style must be auto, matrix or table")
+        if not isinstance(self.notation, NumberFormat):
+            raise TypeError("notation must be a NumberFormat")
+        if not isinstance(self.matrix_style, MatrixStyle):
+            raise TypeError("matrix_style must be a MatrixStyle")
         if not isinstance(self.precision, int) or not 0 <= self.precision <= 17:
             raise ValueError("Mathcad precision must be an integer from 0 to 17")
 
@@ -111,12 +125,22 @@ class MathRegion(Region):
     expression: Expression
     result_format: ResultFormat | None = None
     disabled: bool = False
+    result_shape: ResultShape | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if not callable(getattr(self.expression, "to_xml", None)):
+            raise TypeError("MathRegion requires an expression object")
 
     def to_xml(self, context=None):
         node = super().to_xml(context)
         # Mathcad positions a formula by its mathematical axis. Tall matrices,
         # programs and result tables extend both above and below that axis.
-        node.set("align-y", str(self.top + self.height / 2))
+        if self.top is not None and self.height is not None:
+            node.set(
+                "align-y",
+                str(self.top + (self._axis if self._axis is not None else self.height / 2)),
+            )
         return node
 
     def content_xml(self, context):
@@ -130,7 +154,12 @@ class MathRegion(Region):
 @dataclass
 class TextRegion(Region):
     text: str
-    style: str = "Normal"
+    style: TextStyle = TextStyle.NORMAL
+
+    def __post_init__(self):
+        super().__post_init__()
+        if not isinstance(self.style, TextStyle):
+            raise TypeError("style must be a TextStyle")
 
     def content_xml(self, context):
         node = element("text", use_page_width="false", lock_width="true")
@@ -183,18 +212,69 @@ class Area(Region):
         return node
 
 
+def _place(region, context, size, cursor, default_format=None, strict=True):
+    from .layout import measure
+    from .plots import XYPlot
+
+    if region._auto_top:
+        region.top = cursor
+    if isinstance(region, Area):
+        region.regions = [copy(child) for child in region.regions]
+        end = size * 2
+        for child in region.regions:
+            _place(child, context, size, end, default_format, strict)
+            end = max(end, child.top + child.height + getattr(child, "_flow_extra", 0) + 12)
+        if region._auto_height:
+            region.height = end + size * 2
+    elif isinstance(region, MathRegion):
+        if region._auto_height:
+            fmt = region.result_format or default_format or ResultFormat()
+            try:
+                metrics = math_metrics(
+                    region.expression,
+                    context,
+                    size,
+                    region.result_shape,
+                    fmt.matrix_style == "table",
+                )
+            except LayoutError:
+                if strict:
+                    raise
+                # A later global declaration can supply the shape before serialization.
+                region.height, region._axis = 28, 14
+            else:
+                region.height = metrics.height + 12
+                region._axis = metrics.above + 6
+        context.declare(region.expression.to_xml())
+    elif isinstance(region, TextRegion) and region._auto_height:
+        text_size = size + {"Heading 1": 4, "Heading 2": 2}.get(region.style, 0)
+        chars = max(1, int(region.width / (text_size * 0.65)))
+        lines = sum(
+            max(1, math.ceil(len(line.expandtabs(4)) / chars)) for line in region.text.split("\n")
+        )
+        region.height = lines * text_size * 1.8 + 8
+    elif isinstance(region, XYPlot):
+        # Reserve labels separately from the actual plot's requested drawing height.
+        if region._auto_height:
+            region.height = max(220, region.width * 0.65)
+        label_height = max(measure(t.x.to_xml(), size).height for t in region.traces)
+        region._flow_extra = label_height + size * 2 + 12
+    elif region._auto_height:
+        region.height = 8 if isinstance(region, PageBreak) else 28
+
+
 @dataclass(frozen=True)
 class PageSettings:
     paper_code: int = 9  # Windows DMPAPER_A4
-    orientation: str = "portrait"
+    orientation: Orientation = Orientation.PORTRAIT
     margin_left: float = 36
     margin_right: float = 36
     margin_top: float = 36
     margin_bottom: float = 36
 
     def __post_init__(self):
-        if self.orientation not in {"portrait", "landscape"}:
-            raise ValueError("orientation must be portrait or landscape")
+        if not isinstance(self.orientation, Orientation):
+            raise TypeError("orientation must be an Orientation")
         for value in (self.margin_left, self.margin_right, self.margin_top, self.margin_bottom):
             if not math.isfinite(value) or value < 0:
                 raise ValueError("Page margins must be finite and nonnegative")
@@ -214,35 +294,57 @@ class Worksheet:
     _cursor: float = field(default=0, init=False, repr=False)
 
     def __post_init__(self):
+        initial, self.regions = self.regions, []
         if not isinstance(self.origin, int):
             raise TypeError("origin must be an integer")
         if not 0 <= self.tolerance <= 1 or not 0 <= self.constraint_tolerance <= 1:
             raise ValueError("Mathcad tolerances must be between 0 and 1")
         if not math.isfinite(self.font_size) or self.font_size <= 0:
             raise ValueError("font_size must be positive and finite")
+        for region in initial:
+            self.add(region)
+
+    def layout(self, *, strict=True):
+        context = ShapeContext(self.origin)
+        for region in self.regions:
+            if isinstance(region, MathRegion):
+                xml = region.expression.to_xml()
+                if xml.tag.endswith("}globalDefine"):
+                    context.declare(xml)
+        cursor = 12
+        for region in self.regions:
+            _place(region, context, self.font_size, cursor, self.result_format, strict)
+            cursor = max(
+                cursor, region.top + region.height + getattr(region, "_flow_extra", 0) + 12
+            )
+        self._cursor = cursor
 
     def add(self, region: Region) -> Region:
         if not isinstance(region, Region):
             raise TypeError("Worksheet accepts Region objects")
+        region = copy(region)
         self.regions.append(region)
-        self._cursor = max(self._cursor, region.top + region.height + 12)
+        try:
+            self.layout(strict=False)
+        except Exception:
+            self.regions.pop()
+            raise
         return region
 
     def math(self, expression: Expression, **layout) -> MathRegion:
-        layout.setdefault("top", self._cursor)
         return self.add(MathRegion(expression, **layout))
 
     def text(self, text: str, **layout) -> TextRegion:
-        layout.setdefault("top", self._cursor)
-        layout.setdefault("height", max(20, (text.count("\n") + 1) * self.font_size * 1.5))
         return self.add(TextRegion(text, **layout))
 
-    def define(self, lhs, rhs, **layout) -> MathRegion:
+    def define(self, lhs: ExpressionInput, rhs: ExpressionInput, **layout) -> MathRegion:
         from .expressions import Define
 
         return self.math(Define(lhs, rhs), **layout)
 
-    def evaluate(self, expression, *, unit=None, **layout) -> MathRegion:
+    def evaluate(
+        self, expression: ExpressionInput, *, unit: ExpressionInput | None = None, **layout
+    ) -> MathRegion:
         from .expressions import Evaluate
 
         return self.math(Evaluate(expression, unit=unit), **layout)
@@ -250,13 +352,11 @@ class Worksheet:
     def plot(self, *traces, **layout):
         from .plots import XYPlot
 
-        layout.setdefault("top", self._cursor)
         return self.add(XYPlot(traces, **layout))
 
     def polar_plot(self, *traces, **layout):
         from .plots import PolarPlot
 
-        layout.setdefault("top", self._cursor)
         return self.add(PolarPlot(traces, **layout))
 
     def _settings(self):
@@ -360,6 +460,7 @@ class Worksheet:
         return settings
 
     def to_xml(self) -> ET._Element:
+        self.layout()
         root = ET.Element(
             f"{{{WS}}}worksheet", version="3.0.3", nsmap={None: WS, "ws": WS, "ml": ML}
         )

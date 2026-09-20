@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from xmcd import Function, Range, Symbol, Trace, Worksheet, f
+from xmcd import BuiltinFunction, Function, Marker, Range, Symbol, Trace, Worksheet
 
 
 def build():
@@ -10,7 +10,7 @@ def build():
     t = Symbol("t")
     w.define(t, Range(0, 6.28, second=0.1))
     w.plot(
-        Trace(t, f.sin(t), marker="circle"),
+        Trace(t, BuiltinFunction.SIN(t), marker=Marker.CIRCLE),
         left=70,
         width=320,
         height=230,
@@ -19,11 +19,22 @@ def build():
         y_grid=True,
     )
     name = "u" + "a" * 69
-    w.define(Function(name, [t]), f.sin(t))
-    w.plot(Trace(t, f[name](t)), left=70, width=320, height=230, tag="name-70")
+    w.define(Function(Symbol(name), [t]), BuiltinFunction.SIN(t))
+    w.plot(Trace(t, Symbol(name)(t)), left=70, width=320, height=230, tag="name-70")
     w.plot(
         *(
-            Trace(f.sin(f.sin(f.sin(f.sin(f.sin(t))))), f.cos(f.cos(f.cos(f.cos(f.cos(t))))))
+            Trace(
+                BuiltinFunction.SIN(
+                    BuiltinFunction.SIN(
+                        BuiltinFunction.SIN(BuiltinFunction.SIN(BuiltinFunction.SIN(t)))
+                    )
+                ),
+                BuiltinFunction.COS(
+                    BuiltinFunction.COS(
+                        BuiltinFunction.COS(BuiltinFunction.COS(BuiltinFunction.COS(t)))
+                    )
+                ),
+            )
             for _ in range(8)
         ),
         left=70,

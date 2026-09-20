@@ -2,7 +2,21 @@
 
 from pathlib import Path
 
-from xmcd import Function, Given, Integral, Matrix, Range, Solver, Symbol, Trace, Worksheet, f
+from xmcd import (
+    BuiltinFunction,
+    Function,
+    Given,
+    Integral,
+    LineStyle,
+    Matrix,
+    Range,
+    Solver,
+    SolverKind,
+    Symbol,
+    TextStyle,
+    Trace,
+    Worksheet,
+)
 
 
 def build():
@@ -12,7 +26,7 @@ def build():
     fu, fc, fr, fd = (Symbol(n) for n in ("fu", "fc", "fr", "fd"))
     p1, p2, p3, p4, p5 = (Symbol("p" + str(i)) for i in range(1, 6))
     s0, e, theta = (Symbol(n) for n in ("s0", "e", "theta_max"))
-    w.text("Кулачок с поступательным роликовым толкателем", top=24, style="Heading 1")
+    w.text("Кулачок с поступательным роликовым толкателем", top=24, style=TextStyle.HEADING_1)
     w.text("Расчёт по конструкциям страниц 133–136; длины в метрах, углы в радианах.")
     for name, value in [
         (h, 0.015),
@@ -31,7 +45,7 @@ def build():
     ]:
         w.define(name, value, height=32)
     w.define(
-        "knots",
+        Symbol("knots"),
         Matrix.vector(
             [
                 0,
@@ -51,107 +65,129 @@ def build():
         ),
         height=220,
     )
-    w.define("velocity_knots", Matrix.vector([0, p1, p2, p3, p4, p5, 2 * pi]), height=120)
+    w.define(Symbol("velocity_knots"), Matrix.vector([0, p1, p2, p3, p4, p5, 2 * pi]), height=120)
     for stage in ("unit", "normalized"):
         w.text(
             "Единичные ускорения" if stage == "unit" else "Нормировка на заданный ход",
-            style="Heading 2",
+            style=TextStyle.HEADING_2,
         )
         if stage == "normalized":
-            w.define(am1, am1 * h / f.s(fu), height=40)
-            w.define(am2, am2 * h / (f.s(fu) - f.s(fr)), height=40)
+            w.define(am1, am1 * h / Symbol("s")(fu), height=40)
+            w.define(am2, am2 * h / (Symbol("s")(fu) - Symbol("s")(fr)), height=40)
         w.define(
-            "acceleration_values",
+            Symbol("acceleration_values"),
             Matrix.vector([0, am1, am1, -am1, -am1, 0, 0, -am2, -am2, am2, am2, 0, 0]),
             height=220,
         )
-        w.define(Function("a", [t]), f.linterp("knots", "acceleration_values", t))
-        w.define(Function("integrated_v", [t]), Integral(f.a(q), q, 0, t), height=52)
         w.define(
-            "velocity_values",
-            Matrix.vector([0, f.integrated_v(p1), 0, 0, f.integrated_v(p4), 0, 0]),
+            Function(Symbol("a"), [t]),
+            BuiltinFunction.LINTERP(Symbol("knots"), Symbol("acceleration_values"), t),
+        )
+        w.define(
+            Function(Symbol("integrated_v"), [t]), Integral(Symbol("a")(q), q, 0, t), height=52
+        )
+        w.define(
+            Symbol("velocity_values"),
+            Matrix.vector([0, Symbol("integrated_v")(p1), 0, 0, Symbol("integrated_v")(p4), 0, 0]),
             height=130,
         )
-        w.define(Function("v", [t]), f.linterp("velocity_knots", "velocity_values", t))
-        w.define(Function("s", [t]), Integral(f.v(q), q, 0, t), height=52)
-        w.evaluate(f.s(130 * deg), tag=stage + "-lift")
-        w.evaluate(f.s(2 * pi), tag=stage + "-closure")
+        w.define(
+            Function(Symbol("v"), [t]),
+            BuiltinFunction.LINTERP(Symbol("velocity_knots"), Symbol("velocity_values"), t),
+        )
+        w.define(Function(Symbol("s"), [t]), Integral(Symbol("v")(q), q, 0, t), height=52)
+        w.evaluate(Symbol("s")(130 * deg), tag=stage + "-lift")
+        w.evaluate(Symbol("s")(2 * pi), tag=stage + "-closure")
     w.define(t, Range(0, 2 * pi, second=0.02))
     for name in ("a", "v", "s"):
-        w.plot(Trace(t / deg, f[name](t)), width=380, height=220, left=30, tag="cam-" + name)
-    w.text("Радиус и смещение: решающий блок", style="Heading 2")
+        w.plot(Trace(t / deg, Symbol(name)(t)), width=380, height=220, left=30, tag="cam-" + name)
+    w.text("Радиус и смещение: решающий блок", style=TextStyle.HEADING_2)
     w.define(s0, h)
     w.define(e, 0)
     w.math(Given())
-    w.math(f.tan(theta).eq((f.v(p1) + e) / (s0 + f.s(p1))), height=50)
-    w.math(f.tan(theta).eq((-f.v(p4) - e) / (s0 + f.s(p4))), height=50)
-    w.define("solution", Solver("Find")(s0, e), height=42)
+    w.math(BuiltinFunction.TAN(theta).eq((Symbol("v")(p1) + e) / (s0 + Symbol("s")(p1))), height=50)
+    w.math(
+        BuiltinFunction.TAN(theta).eq((-Symbol("v")(p4) - e) / (s0 + Symbol("s")(p4))), height=50
+    )
+    w.define(Symbol("solution"), Solver(SolverKind.FIND)(s0, e), height=42)
     w.define(s0, Symbol("solution")[0])
     w.define(e, Symbol("solution")[1])
-    w.define("r0", (s0**2 + e**2).sqrt(), height=42)
+    w.define(Symbol("r0"), (s0**2 + e**2).sqrt(), height=42)
     for name in ("s0", "e", "r0"):
-        w.evaluate(name, tag="cam-" + name)
-    w.define(Function("pressure_angle", [t]), f.atan((f.v(t) + e) / (s0 + f.s(t))), height=52)
-    w.evaluate(f.pressure_angle(p1) / deg, tag="pressure-plus30")
-    w.evaluate(f.pressure_angle(p4) / deg, tag="pressure-minus30")
-    w.define(Function("tangent_left", [y]), -e - f.tan(theta) * (y + s0))
-    w.define(Function("tangent_right", [y]), -e + f.tan(theta) * (y + s0))
+        w.evaluate(Symbol(name), tag="cam-" + name)
+    w.define(
+        Function(Symbol("pressure_angle"), [t]),
+        BuiltinFunction.ATAN((Symbol("v")(t) + e) / (s0 + Symbol("s")(t))),
+        height=52,
+    )
+    w.evaluate(Symbol("pressure_angle")(p1) / deg, tag="pressure-plus30")
+    w.evaluate(Symbol("pressure_angle")(p4) / deg, tag="pressure-minus30")
+    w.define(Function(Symbol("tangent_left"), [y]), -e - BuiltinFunction.TAN(theta) * (y + s0))
+    w.define(Function(Symbol("tangent_right"), [y]), -e + BuiltinFunction.TAN(theta) * (y + s0))
     w.define(y, Range(-s0, h, second=-s0 + 0.001))
     w.plot(
-        Trace(f.v(t), f.s(t)),
-        Trace(f.tangent_left(y), y, style="dash"),
-        Trace(f.tangent_right(y), y, style="dash"),
+        Trace(Symbol("v")(t), Symbol("s")(t)),
+        Trace(Symbol("tangent_left")(y), y, style=LineStyle.DASH),
+        Trace(Symbol("tangent_right")(y), y, style=LineStyle.DASH),
         left=30,
         width=350,
         height=310,
         tag="cam-phase-portrait",
     )
     w.plot(
-        Trace(t / deg, f.pressure_angle(t) / deg),
+        Trace(t / deg, Symbol("pressure_angle")(t) / deg),
         left=30,
         width=380,
         height=220,
         tag="cam-pressure-angle",
     )
-    w.text("Центровой и конструктивный профили, ролик и толкатель", style="Heading 2")
-    w.define("roller_radius", 0.01)
-    w.define("position", 0 * deg)
+    w.text("Центровой и конструктивный профили, ролик и толкатель", style=TextStyle.HEADING_2)
+    w.define(Symbol("roller_radius"), 0.01)
+    w.define(Symbol("position"), 0 * deg)
     pos, r = Symbol("position"), Symbol("roller_radius")
     functions = {
-        "xA": e * f.cos(t),
-        "yA": e * f.sin(t),
-        "xB": f.xA(t) + s0 * f.cos(t + pi / 2),
-        "yB": f.yA(t) + s0 * f.sin(t + pi / 2),
-        "xC": f.xB(t) + f.s(t) * f.cos(t + pi / 2),
-        "yC": f.yB(t) + f.s(t) * f.sin(t + pi / 2),
-        "xD": f.xC(t) - r * f.cos(t + pi / 2 - f.pressure_angle(t)),
-        "yD": f.yC(t) - r * f.sin(t + pi / 2 - f.pressure_angle(t)),
-        "xR": f.xC(pos) + r * f.cos(t),
-        "yR": f.yC(pos) + r * f.sin(t),
+        "xA": e * BuiltinFunction.COS(t),
+        "yA": e * BuiltinFunction.SIN(t),
+        "xB": Symbol("xA")(t) + s0 * BuiltinFunction.COS(t + pi / 2),
+        "yB": Symbol("yA")(t) + s0 * BuiltinFunction.SIN(t + pi / 2),
+        "xC": Symbol("xB")(t) + Symbol("s")(t) * BuiltinFunction.COS(t + pi / 2),
+        "yC": Symbol("yB")(t) + Symbol("s")(t) * BuiltinFunction.SIN(t + pi / 2),
+        "xD": Symbol("xC")(t) - r * BuiltinFunction.COS(t + pi / 2 - Symbol("pressure_angle")(t)),
+        "yD": Symbol("yC")(t) - r * BuiltinFunction.SIN(t + pi / 2 - Symbol("pressure_angle")(t)),
+        "xR": Symbol("xC")(pos) + r * BuiltinFunction.COS(t),
+        "yR": Symbol("yC")(pos) + r * BuiltinFunction.SIN(t),
     }
     for name, value in functions.items():
-        w.define(Function(name, [t]), value, height=38)
-    w.define("X", Matrix.vector([f.xC(pos), f.xC(pos) - h * f.sin(pos)]), height=50)
-    w.define("Y", Matrix.vector([f.yC(pos), f.yC(pos) + h * f.cos(pos)]), height=50)
+        w.define(Function(Symbol(name), [t]), value, height=38)
+    w.define(
+        Symbol("X"),
+        Matrix.vector([Symbol("xC")(pos), Symbol("xC")(pos) - h * BuiltinFunction.SIN(pos)]),
+        height=50,
+    )
+    w.define(
+        Symbol("Y"),
+        Matrix.vector([Symbol("yC")(pos), Symbol("yC")(pos) + h * BuiltinFunction.COS(pos)]),
+        height=50,
+    )
     w.plot(
         *(
-            Trace(f["x" + n](t), f["y" + n](t), style=style)
+            Trace(Symbol("x" + n)(t), Symbol("y" + n)(t), style=style)
             for n, style in [
-                ("A", "dot"),
-                ("B", "dash-dot"),
-                ("C", "dash"),
-                ("D", "solid"),
-                ("R", "solid"),
+                ("A", LineStyle.DOT),
+                ("B", LineStyle.DASH_DOT),
+                ("C", LineStyle.DASH),
+                ("D", LineStyle.SOLID),
+                ("R", LineStyle.SOLID),
             ]
         ),
-        Trace("X", "Y"),
+        Trace(Symbol("X"), Symbol("Y")),
         left=30,
         width=400,
         height=390,
         tag="cam-profile",
     )
-    w.evaluate(f.xD(0), tag="profile-x0")
-    w.evaluate(f.yD(0), tag="profile-y0")
+    w.evaluate(Symbol("xD")(0), tag="profile-x0")
+    w.evaluate(Symbol("yD")(0), tag="profile-y0")
     return w
 
 

@@ -4,7 +4,8 @@ import re
 from dataclasses import dataclass, field
 
 from .document import Region, element
-from .expressions import Expr, expr
+from .expressions import ExpressionInput, expr
+from .types import LineStyle, Marker
 
 MARKERS = {
     "none": 0,
@@ -23,21 +24,21 @@ MARKERS = {
 
 @dataclass(frozen=True)
 class Trace:
-    x: Expr
-    y: Expr
+    x: ExpressionInput
+    y: ExpressionInput
     color: str | None = None
-    style: str = "solid"
-    marker: str = "none"
+    style: LineStyle = LineStyle.SOLID
+    marker: Marker = Marker.NONE
 
     def __post_init__(self):
         object.__setattr__(self, "x", expr(self.x))
         object.__setattr__(self, "y", expr(self.y))
         if self.color is not None and not re.fullmatch(r"#[0-9a-fA-F]{6}", self.color):
             raise ValueError("Trace color must be #RRGGBB")
-        if self.style not in {"solid", "dash", "dot", "dash-dot"}:
-            raise ValueError("Unknown trace line style")
-        if self.marker not in MARKERS:
-            raise ValueError("Unknown trace marker")
+        if not isinstance(self.style, LineStyle):
+            raise TypeError("style must be a LineStyle")
+        if not isinstance(self.marker, Marker):
+            raise TypeError("marker must be a Marker")
 
 
 @dataclass
@@ -45,7 +46,7 @@ class XYPlot(Region):
     _polar = False
     traces: tuple[Trace, ...]
     width: float = field(default=320, kw_only=True)
-    height: float = field(default=220, kw_only=True)
+    height: float | None = field(default=None, kw_only=True)
     x_bounds: tuple[float | None, float | None] = (None, None)
     y_bounds: tuple[float | None, float | None] = (None, None)
     x_grid: bool = False

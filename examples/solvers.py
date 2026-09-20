@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from xmcd import Function, Given, Solver, Symbol, Worksheet
+from xmcd import Function, Given, Solver, SolverKind, Symbol, Worksheet
 
 
 def build():
@@ -14,12 +14,12 @@ def build():
     sheet.math(Given())
     sheet.math((x + y).eq(5))
     sheet.math((x - y).eq(1))
-    sheet.define("solution", Solver("Find")(x, y))
+    sheet.define(Symbol("solution"), Solver(SolverKind.FIND)(x, y))
     sheet.evaluate(Symbol("solution"), tag="solution-3-2", height=50)
     sheet.define(x, 2)
     sheet.math(Given())
     sheet.math((x**2).eq(p))
-    sheet.define(Function("positive_root", [p]), Solver("Find")(x))
+    sheet.define(Function(Symbol("positive_root"), [p]), Solver(SolverKind.FIND)(x))
     sheet.evaluate(Symbol("positive_root")(9), tag="parameterized-3")
     return sheet
 

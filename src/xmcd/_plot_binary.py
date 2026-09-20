@@ -10,6 +10,7 @@ import struct
 from dataclasses import dataclass
 
 from .expressions import Call, Number, Operator, Parens, Sequence, Symbol, _group_operand, expr
+from .types import LiteralSubscript
 
 
 def u32(value):
@@ -59,7 +60,12 @@ def comma(nodes):
 def expression(value):
     value = expr(value)
     if isinstance(value, Symbol):
-        name = value.name + ("." + value.subscript if value.subscript else "")
+        subscript = (
+            value.subscript.text
+            if isinstance(value.subscript, LiteralSubscript)
+            else value.subscript
+        )
+        name = value.name + ("." + subscript if subscript else "")
         return Node(0xF02, text=name, flags=0x24)
     if isinstance(value, Number):
         return Node(0xF02, text=str(value.value), flags=0x34)

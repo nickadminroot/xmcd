@@ -4,7 +4,7 @@ Python-библиотека для создания документов Mathcad
 
 Объектная модель выражений, регионов и листов. Целевой формат: классический Mathcad, не Mathcad Prime MCDX.
 
-Версия 0.1: формулы, матрицы, программы, решающие блоки, редактируемые XY- и полярные графики. [Покрытие и проверка](docs/compatibility.md) отделяют реализованные возможности от подтверждённых в Mathcad.
+Версия 0.2: формулы, матрицы, программы, решающие блоки, редактируемые XY- и полярные графики. [Покрытие и проверка](docs/compatibility.md) отделяют реализованные возможности от подтверждённых в Mathcad.
 
 ## Использование
 
@@ -15,25 +15,24 @@ uv run pytest -q
 ```
 
 ```python
-from xmcd import Worksheet, Symbol, Function, Matrix, Integral, f
+from xmcd import Worksheet, Symbol, Function, Matrix, Integral
 
 x = Symbol("x")
 sheet = Worksheet("Расчёт")
 sheet.text("Пример расчёта", top=24)
-sheet.define(Function("g", [x]), x**3 + 2*x)
-sheet.evaluate(f.g(2))
-sheet.define("M", Matrix([[1, 2], [3, 4]]), height=50)
-sheet.evaluate(Integral(x**2, x, 0, 1), height=50)
+g = Function(Symbol("g"), [x])
+sheet.define(g, x**3 + 2*x)
+sheet.evaluate(g(2))
+sheet.define(Symbol("M"), Matrix([[1, 2], [3, 4]]))
+sheet.evaluate(Integral(x**2, x, 0, 1))
 sheet.write("example.xmcd")
 ```
 
-Строка в выражении обозначает идентификатор; для строкового значения используйте `String`. Матрицы задаются строками Python. `Symbol("x", subscript="A")` — буквенный индекс, `x[i]` — обращение к элементу массива. `x.eq(y)` создаёт равенство Mathcad; условия не преобразуются в Python `bool`.
+API использует явные объекты: `Symbol`, `Number`, `String`, `Function`, `Matrix`, `BuiltinFunction`. Настройки и операции имеют перечисления: `SolverKind`, `OperatorKind`, `DefinitionKind`, `MatrixStyle`, `LineStyle`, `Marker`. `Greek` задаёт греческие буквы, `LiteralSubscript` — буквенный индекс. Числовой индекс массива задаётся `A[i, j]`. Строки в позициях выражений и вместо перечислений не принимаются; используйте `Symbol("x")` для имени и `String("текст")` для строкового значения. Числовые литералы поддерживаются. Примеры — в [справочнике API](docs/api.md).
 
-`f` позволяет вызывать встроенные и пользовательские функции по имени без конечного списка разрешённых функций. Наличие вызова в XMCD не подтверждает корректность его аргументов: вычисление выполняет Mathcad при открытии документа.
+Высота формул, матриц и текста оценивается автоматически с запасом. Последовательные регионы размещаются ниже предыдущего; для графиков резервируется место под подписи. Можно явно задать `top` и `height`. Размер вычисляемой матрицы определяется по известным определениям; если он неизвестен без пересчёта, передайте `result_shape=ResultShape(rows, columns)`. См. [правила размещения](docs/layout.md) и `examples/layout.py`.
 
-Размеры регионов и координаты задаются в пунктах. `sheet.add(region)` сохраняет явное положение; `sheet.math(...)` и `sheet.text(...)` размещают следующий регион ниже предыдущего, если `top` не задан. Для высоких формул задавайте `height`: математическая ось размещается в середине выделенной высоты. Библиотека пока не измеряет типографскую высоту выражения.
-
-Решающие блоки: `Given()` и `Solver("Find")(x, y)`, пример `examples/solvers.py`. Редактируемые графики: `Trace`, `XYPlot` и `sheet.plot(...)`; [примеры и ограничения](docs/plot-format.md).
+Решающие блоки: `Given()` и `Solver(SolverKind.FIND)(x, y)`, пример `examples/solvers.py`. Редактируемые графики: `Trace`, `XYPlot` и `sheet.plot(...)`; [примеры и ограничения](docs/plot-format.md).
 
 [Справочник Python API](docs/api.md) · [Карта покрытия страниц книги](docs/book-coverage.md).
 
@@ -41,7 +40,7 @@ sheet.write("example.xmcd")
 
 ```bash
 uv build
-uv pip install dist/xmcd-0.1.0-py3-none-any.whl
+uv pip install dist/xmcd-0.2.0-py3-none-any.whl
 ```
 
 Пакет не обращается к Windows, Mathcad или COM. Для вычисления формул полученный файл открывается в классическом Mathcad. Проверенная версия — 14.1.5.594; совместимость с другими версиями требует отдельного тестирования.
