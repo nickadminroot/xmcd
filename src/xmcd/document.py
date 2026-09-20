@@ -234,6 +234,12 @@ class Worksheet:
         layout.setdefault("top", self._cursor)
         return self.add(XYPlot(traces, **layout))
 
+    def polar_plot(self, *traces, **layout):
+        from .plots import PolarPlot
+
+        layout.setdefault("top", self._cursor)
+        return self.add(PolarPlot(traces, **layout))
+
     def _settings(self):
         settings = element("settings")
         presentation = element("presentation", settings)

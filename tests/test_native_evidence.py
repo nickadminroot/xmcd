@@ -109,3 +109,19 @@ def test_native_programming_and_symbolic_factorization():
     assert result.find(".//ml:minus", NS) is not None
     assert result.find(".//ml:plus", NS) is not None
     assert [n.text for n in result.findall(".//ml:id", NS)] == ["x", "x"]
+
+
+def test_native_optimization_and_hodograph_magnitude():
+    cases = {
+        "optimization-mathcad14.xmcd": {"minimum-3": 3, "maximum-2": 2, "minerr-2": 2},
+        "hodograph-mathcad14.xmcd": {"magnitude-at-1": math.sqrt(5 + 4 * math.cos(1))},
+    }
+    for filename, expected in cases.items():
+        path = Path(__file__).parent / "fixtures" / filename
+        validate(path)
+        assert calculation_errors(path) == []
+        root = parse_xml(path)
+        for tag, expected_value in expected.items():
+            result = root.xpath("//ws:region[@tag=$tag]//ml:result/ml:real", tag=tag, namespaces=NS)
+            assert len(result) == 1
+            assert math.isclose(float(result[0].text), expected_value, rel_tol=1e-6, abs_tol=1e-8)

@@ -35,7 +35,7 @@ from .expressions import (
     expr,
     f,
 )
-from .plots import Trace, XYPlot
+from .plots import PolarPlot, Trace, XYPlot
 from .validation import CalculationError, ValidationError, calculation_errors, validate
 
 __all__ = [
@@ -62,6 +62,7 @@ __all__ = [
     "PageBreak",
     "PageSettings",
     "Placeholder",
+    "PolarPlot",
     "Product",
     "Program",
     "Range",

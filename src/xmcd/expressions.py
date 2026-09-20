@@ -111,6 +111,12 @@ class Expr:
     def conjugate(self):
         return Operator("conjugate", self)
 
+    def sqrt(self):
+        return Operator("sqrt", self)
+
+    def factorial(self):
+        return Operator("factorial", self)
+
     def __call__(self, *arguments):
         return Call(self, *arguments)
 

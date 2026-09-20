@@ -110,15 +110,15 @@ class TreeWriter:
         return data
 
 
-def formatting(columns, rows, traces):
+def formatting(columns, rows, traces, *, polar=False):
     data = class_record(("d2_graph_format", 7, 0x15), ("graphData", 0, 0x1A))
-    data += u32(0) + u32(0x2002) + b"\0" + u32(3) + u32(1)
+    data += u32(0) + u32(0x2006 if polar else 0x2002) + b"\0" + u32(3) + u32(1)
     data += u32(columns) + u32(rows)
     # Native defaults: linear axis, automatic grid spacing, black axes.
     axis_data = bytes.fromhex("4c 01 00 00 00 01 00 00 00 00 00 00 00 00 00 ff 00 ff 00 00")
     data += b"\1" + class_record(("axisFormat", 4, 0x1C)) + axis_data
-    data += (b"\1\x1c" + axis_data) * 2
-    data += b"\0\0\1" + class_record(("trace2D", 3, 0x1B))
+    data += (b"\1\x1c" + axis_data) * (1 if polar else 2)
+    data += (b"\0\1" if polar else b"\0\0\1") + class_record(("trace2D", 3, 0x1B))
     data += bytes.fromhex("01 00 00 00 1f 01") + bytes([16])
     colors = [(255, 0, 0), (0, 0, 255), (0, 128, 0), (255, 0, 255), (0, 160, 160)]
     for i in range(16):
@@ -141,11 +141,10 @@ def formatting(columns, rows, traces):
 def graph_bytes(plot):
     x = comma([expression(t.x) for t in plot.traces])
     y = comma([expression(t.y) for t in plot.traces])
-    graph = Node(
-        0xC119,
-        pair(axis(y, plot.y_bounds), axis(placeholder(automatic=True), (None, None))),
-        axis(x, plot.x_bounds),
-    )
+    y_axis = axis(y, plot.y_bounds)
+    if not plot._polar:
+        y_axis = pair(y_axis, axis(placeholder(automatic=True), (None, None)))
+    graph = Node(0xC119, y_axis, axis(x, plot.x_bounds))
     writer = TreeWriter()
     body = writer.write(Node(0x700D, right=graph))
     data = struct.pack("<4I", 12, 1, 0x53, 10)
@@ -162,4 +161,4 @@ def graph_bytes(plot):
     data += body + bytes([writer.identifier + 1])
     columns = max(1, round((plot.width - 27) / 6))
     rows = max(1, round((plot.height - 39.75) / 6))
-    return data + formatting(columns, rows, plot.traces)
+    return data + formatting(columns, rows, plot.traces, polar=plot._polar)

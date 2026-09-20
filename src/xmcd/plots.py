@@ -25,6 +25,7 @@ class Trace:
 
 @dataclass
 class XYPlot(Region):
+    _polar = False
     traces: tuple[Trace, ...]
     width: float = field(default=320, kw_only=True)
     height: float = field(default=220, kw_only=True)
@@ -51,3 +52,9 @@ class XYPlot(Region):
         from ._plot_binary import graph_bytes
 
         return element("plot", disable_calc="false", item_idref=context.binary(graph_bytes(self)))
+
+
+class PolarPlot(XYPlot):
+    """Native polar graph: Trace(angle in radians, radius)."""
+
+    _polar = True

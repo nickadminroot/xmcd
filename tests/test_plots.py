@@ -43,3 +43,14 @@ def test_invalid_plot_values_fail_before_serialization():
         XYPlot([])
     with pytest.raises(ValueError, match="maximum"):
         XYPlot([Trace("x", "y")], x_bounds=(3, 1))
+
+
+def test_polar_graph_has_its_own_coordinate_system():
+    from xmcd import PolarPlot
+    from xmcd._plot_binary import graph_bytes
+
+    polar = graph_bytes(PolarPlot([Trace("a", "r")]))
+    xy = graph_bytes(XYPlot([Trace("a", "r")]))
+    assert b"\x06\x20\x00\x00" in polar
+    assert b"\x02\x20\x00\x00" in xy
+    assert len(polar) < len(xy)
