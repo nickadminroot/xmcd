@@ -221,6 +221,12 @@ class Worksheet:
 
         return self.math(Evaluate(expression, unit=unit), **layout)
 
+    def plot(self, *traces, **layout):
+        from .plots import XYPlot
+
+        layout.setdefault("top", self._cursor)
+        return self.add(XYPlot(traces, **layout))
+
     def _settings(self):
         settings = element("settings")
         presentation = element("presentation", settings)

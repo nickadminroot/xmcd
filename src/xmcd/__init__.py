@@ -35,6 +35,7 @@ from .expressions import (
     expr,
     f,
 )
+from .plots import Trace, XYPlot
 from .validation import CalculationError, ValidationError, calculation_errors, validate
 
 __all__ = [
@@ -73,10 +74,12 @@ __all__ = [
     "Symbol",
     "Symbolic",
     "TextRegion",
+    "Trace",
     "TryCatch",
     "ValidationError",
     "While",
     "Worksheet",
+    "XYPlot",
     "calculation_errors",
     "expr",
     "f",
