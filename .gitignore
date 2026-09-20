@@ -1,0 +1,12 @@
+mathcad_xmcd_generator/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+research/
+output/
+Kursovoe_proektirovanie_Chernaya_Timofeev_2019_2ch.pdf
