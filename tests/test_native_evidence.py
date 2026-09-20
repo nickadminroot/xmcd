@@ -125,3 +125,117 @@ def test_native_optimization_and_hodograph_magnitude():
             result = root.xpath("//ws:region[@tag=$tag]//ml:result/ml:real", tag=tag, namespaces=NS)
             assert len(result) == 1
             assert math.isclose(float(result[0].text), expected_value, rel_tol=1e-6, abs_tol=1e-8)
+
+
+def test_native_operator_grouping():
+    path = Path(__file__).parent / "fixtures/precedence-mathcad14.xmcd"
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+    expected = {
+        "multiply-sum": [14],
+        "sum-multiply": [20],
+        "minus-sum": [-5],
+        "minus-minus": [3],
+        "negative-sum": [-5],
+        "power-sum": [625],
+        "power-power": [4096],
+        "power-exponent": [128],
+        "negative-base": [4],
+        "negative-expression": [4],
+        "factorial-sum": [120],
+        "fraction-sum": [5 / 6],
+        "nested-fraction": [8 / 3],
+        "boolean": [1],
+        "sqrt": [math.sqrt(5)],
+        "transpose": [5, 5, 5, 5],
+    }
+    for tag, values in expected.items():
+        actual = root.xpath(
+            "//ws:region[@tag=$tag]//ml:result//ml:real/text()", tag=tag, namespaces=NS
+        )
+        assert len(actual) == len(values), tag
+        assert all(math.isclose(float(a), b) for a, b in zip(actual, values)), tag
+
+
+def test_native_compressor_kinematics_against_analytic_solution():
+    path = Path(__file__).parent / "fixtures/compressor-mathcad14.xmcd"
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+    phi, crank, rod = 2 * math.pi / 3, 0.08, 0.32
+    s, c = math.sin(phi), math.cos(phi)
+    u = rod**2 - crank**2 * s**2
+    vy = -crank * s - crank**2 * s * c / math.sqrt(u)
+    ay = -crank * c - crank**2 * math.cos(2 * phi) / math.sqrt(u) - crank**4 * (s * c) ** 2 / u**1.5
+    vphi2 = crank * c / math.sqrt(u)
+    vx_center = 0.67 * crank * c
+    vy_center = -crank * s - 0.33 * crank**2 * s * c / math.sqrt(u)
+    inertia = 0.22 * vphi2**2 + 8 * (vx_center**2 + vy_center**2) + 10 * vy**2
+    expected = {
+        "probe-yC": crank * c + math.sqrt(u),
+        "probe-v_yC": vy,
+        "probe-a_yC": ay,
+        "probe-v_phi2": vphi2,
+        "inertia-at-probe": inertia,
+        "probe-moment": -80 * vy_center - 100 * vy,
+    }
+    for tag, value in expected.items():
+        actual = root.xpath(
+            "//ws:region[@tag=$tag]//ml:result/ml:real/text()", tag=tag, namespaces=NS
+        )
+        assert len(actual) == 1
+        assert math.isclose(float(actual[0]), value, rel_tol=1e-9, abs_tol=1e-10), tag
+    table = root.xpath('//ws:region[@tag="mechanism-table"]//ml:result/ml:matrix', namespaces=NS)[0]
+    assert (table.get("rows"), table.get("cols")) == ("13", "5")
+
+
+def test_native_roundtrip_preserves_generated_expression_trees():
+    """No equation-auditor rewrites, even when they leave no calculation error."""
+    import runpy
+
+    def shape(node):
+        # Ignore presentation attributes and computed results, preserve operand order.
+        if (
+            node.tag.endswith("}apply")
+            and len(node) == 2
+            and node[0].tag.endswith("}neg")
+            and node[1].tag.endswith("}real")
+        ):
+            return node[1].tag, str(-float(node[1].text)), ()
+        if node.tag.endswith("}real"):
+            return node.tag, str(float(node.text)), ()
+        return node.tag, (node.text or "").strip(), tuple(shape(child) for child in node)
+
+    for name in ("precedence", "compressor"):
+        source = runpy.run_path(str(Path(__file__).parents[1] / "examples" / f"{name}.py"))[
+            "build"
+        ]().to_xml()
+        saved = parse_xml(Path(__file__).parent / f"fixtures/{name}-mathcad14.xmcd")
+        source_math = source.findall("ws:regions/ws:region/ws:math", NS)
+        saved_math = saved.findall("ws:regions/ws:region/ws:math", NS)
+        assert len(source_math) == len(saved_math)
+        for before, after in zip(source_math, saved_math):
+            a, b = before[0], after[0]
+            if a.tag.endswith("}eval"):
+                a, b = a[0], b[0]
+            assert shape(a) == shape(b), before.getparent().get("region-id")
+    for path in (Path(__file__).parent / "fixtures").glob("*.xmcd"):
+        assert not parse_xml(path).xpath('//ws:region[@show-highlight="true"]', namespaces=NS), path
+
+
+def test_native_ui_parameter_edit_recalculates_connected_document():
+    before = parse_xml(Path(__file__).parent / "fixtures/compressor-mathcad14.xmcd")
+    path = Path(__file__).parent / "fixtures/compressor-edited-mathcad14.xmcd"
+    after = parse_xml(path)
+    assert calculation_errors(path) == []
+    n1 = after.xpath('//ml:define[ml:id="n1"]/ml:real/text()', namespaces=NS)
+    assert n1 == ["20"]
+    for tag in ("crank-0.08", "rod-0.32", "probe-yC", "probe-v_yC", "cycle-work"):
+        values = [
+            float(
+                root.xpath(
+                    "//ws:region[@tag=$tag]//ml:result/ml:real/text()", tag=tag, namespaces=NS
+                )[0]
+            )
+            for root in (before, after)
+        ]
+        assert math.isclose(values[1], values[0] / 2, rel_tol=1e-9), tag

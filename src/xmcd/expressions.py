@@ -117,6 +117,9 @@ class Expr:
     def factorial(self):
         return Operator("factorial", self)
 
+    def parens(self):
+        return Parens(self)
+
     def __call__(self, *arguments):
         return Call(self, *arguments)
 
@@ -189,6 +192,64 @@ class Placeholder(Expr):
         return node("placeholder")
 
 
+@dataclass(frozen=True, eq=False)
+class Parens(Expr):
+    """Explicit visual grouping, also used automatically to preserve operator semantics."""
+
+    value: Expr
+
+    def __post_init__(self):
+        object.__setattr__(self, "value", expr(self.value))
+
+    def to_xml(self):
+        return node("parens", self.value)
+
+
+# Mathcad's equation auditor interprets visual precedence even in an XML AST.
+# Fractions, radicals, absolute values and overbars already delimit their operands.
+_PRECEDENCE = {
+    "or": 10,
+    "xor": 10,
+    "and": 20,
+    "not": 25,
+    "equal": 30,
+    "notEqual": 30,
+    "lessThan": 30,
+    "lessOrEqual": 30,
+    "greaterThan": 30,
+    "greaterOrEqual": 30,
+    "plus": 40,
+    "minus": 40,
+    "mult": 50,
+    "crossProduct": 50,
+    "neg": 60,
+    "pow": 70,
+    "factorial": 80,
+    "transpose": 80,
+    "indexer": 80,
+    "matcol": 80,
+    "matrow": 80,
+}
+
+
+def _group_operand(parent, argument, index):
+    precedence = _PRECEDENCE.get(parent)
+    if precedence is None or (parent in {"pow", "indexer", "matcol", "matrow"} and index == 1):
+        return argument
+    if isinstance(argument, Number) and argument.value < 0:
+        child_precedence = _PRECEDENCE["neg"]
+    elif isinstance(argument, Operator):
+        child_precedence = _PRECEDENCE.get(argument.name, 100)
+    else:
+        return argument
+    if child_precedence < precedence or (
+        child_precedence == precedence
+        and (index > 0 or parent in {"pow", "neg", "not", "factorial", "transpose"})
+    ):
+        return Parens(argument)
+    return argument
+
+
 UNARY = frozenset(
     [
         "absval",
@@ -242,7 +303,14 @@ class Operator(Expr):
         object.__setattr__(self, "arguments", tuple(expr(a) for a in arguments))
 
     def to_xml(self):
-        return node("apply", node(self.name), *self.arguments)
+        return node(
+            "apply",
+            node(self.name),
+            *(
+                _group_operand(self.name, argument, index)
+                for index, argument in enumerate(self.arguments)
+            ),
+        )
 
 
 @dataclass(frozen=True, eq=False, init=False)
