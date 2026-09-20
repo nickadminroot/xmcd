@@ -9,7 +9,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 
-from .expressions import Call, Number, Operator, Sequence, Symbol, expr
+from .expressions import Call, Number, Operator, Parens, Sequence, Symbol, _group_operand, expr
 
 
 def u32(value):
@@ -65,13 +65,27 @@ def expression(value):
         return Node(0xF02, text=str(value.value), flags=0x34)
     if isinstance(value, Sequence):
         return comma([expression(v) for v in value.values])
+    if isinstance(value, Parens):
+        return Node(0x708E, right=expression(value.value))
     if isinstance(value, Call):
         arguments = comma([expression(v) for v in value.arguments])
         return Node(0xCE12, expression(value.function), Node(0x708E, right=arguments))
-    if isinstance(value, Operator) and value.name in {"pow", "div"}:
-        return Node(
-            {"pow": 0xFC05, "div": 0xFB07}[value.name], *(expression(a) for a in value.arguments)
-        )
+    if isinstance(value, Operator):
+        if value.name == "minus":
+            # A + (-B) uses the independently observed addition and negation nodes.
+            # Explicit grouping preserves a compound right operand.
+            return expression(value.arguments[0] + (-value.arguments[1]).parens())
+        if value.name == "neg":
+            return Node(0x4B95, right=expression(_group_operand("neg", value.arguments[0], 0)))
+        codes = {"pow": 0xFC05, "div": 0xFB07, "plus": 0xC789, "mult": 0xCA06}
+        if value.name in codes:
+            return Node(
+                codes[value.name],
+                *(
+                    expression(_group_operand(value.name, argument, index))
+                    for index, argument in enumerate(value.arguments)
+                ),
+            )
     raise TypeError(
         "This graph expression is not supported yet; define a worksheet function "
         "or vector and plot its name/call instead"
@@ -114,14 +128,22 @@ class TreeWriter:
         return data
 
 
-def formatting(columns, rows, traces, *, polar=False):
+def formatting(columns, rows, traces, *, polar=False, x_grid=False, y_grid=False):
+    from .plots import MARKERS
+
     data = class_record(("d2_graph_format", 7, 0x15), ("graphData", 0, 0x1A))
     data += u32(0) + u32(0x2006 if polar else 0x2002) + b"\0" + u32(3) + u32(1)
     data += u32(columns) + u32(rows)
     # Native defaults: linear axis, automatic grid spacing, black axes.
     axis_data = bytes.fromhex("4c 01 00 00 00 01 00 00 00 00 00 00 00 00 00 ff 00 ff 00 00")
-    data += b"\1" + class_record(("axisFormat", 4, 0x1C)) + axis_data
-    data += (b"\1\x1c" + axis_data) * (1 if polar else 2)
+
+    def axis_style(grid):
+        return bytes([axis_data[0] | (2 if grid else 0)]) + axis_data[1:]
+
+    data += b"\1" + class_record(("axisFormat", 4, 0x1C)) + axis_style(x_grid)
+    data += b"\1\x1c" + axis_style(y_grid)
+    if not polar:
+        data += b"\1\x1c" + axis_data
     data += (b"\0\1" if polar else b"\0\0\1") + class_record(("trace2D", 3, 0x1B))
     data += bytes.fromhex("01 00 00 00 1f 01") + bytes([16])
     colors = [(255, 0, 0), (0, 0, 255), (0, 128, 0), (255, 0, 255), (0, 160, 160)]
@@ -133,9 +155,9 @@ def formatting(columns, rows, traces, *, polar=False):
             else colors[i % len(colors)]
         )
         style = trace.style if trace else "solid"
-        data += bytes(
-            [i, 1, 0x1B, {"solid": 1, "dash": 2, "dot": 3, "dash-dot": 4}[style], *rgb, 0x1F, 1]
-        )
+        marker = MARKERS[trace.marker] if trace else 0
+        data += bytes([i, 1, 0x1B, {"solid": 1, "dash": 2, "dot": 3, "dash-dot": 4}[style], *rgb])
+        data += (bytes([0x1E, marker]) if marker else b"\x1f") + b"\1"
     data += b"\1" + class_record(("NumericalFormat", 8, 0x48))
     data += struct.pack("<3H4I", 100, 105, 105, 3, 15, 10, 3)
     data += bytes(15) + u32(12) + bytes(10)
@@ -165,4 +187,6 @@ def graph_bytes(plot):
     data += body + compact_uint(writer.identifier + 1)
     columns = max(1, round((plot.width - 27) / 6))
     rows = max(1, round((plot.height - 39.75) / 6))
-    return data + formatting(columns, rows, plot.traces, polar=plot._polar)
+    return data + formatting(
+        columns, rows, plot.traces, polar=plot._polar, x_grid=plot.x_grid, y_grid=plot.y_grid
+    )

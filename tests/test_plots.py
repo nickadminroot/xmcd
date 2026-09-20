@@ -73,3 +73,12 @@ def test_compact_archive_integer_boundaries(value, encoded):
     from xmcd._plot_binary import compact_uint
 
     assert compact_uint(value) == bytes.fromhex(encoded)
+
+
+def test_plot_arithmetic_grouping_and_markers_are_serializable():
+    t = Symbol("t")
+    sheet = Worksheet()
+    sheet.plot(Trace(t, (t + 1) * (t - 2), marker="circle"), x_grid=True, y_grid=True)
+    validate(sheet.to_bytes())
+    with pytest.raises(ValueError, match="marker"):
+        Trace(t, t, marker="unknown")

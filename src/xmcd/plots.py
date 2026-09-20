@@ -6,6 +6,20 @@ from dataclasses import dataclass, field
 from .document import Region, element
 from .expressions import Expr, expr
 
+MARKERS = {
+    "none": 0,
+    "cross": 1,
+    "plus": 2,
+    "square": 3,
+    "diamond": 4,
+    "circle": 5,
+    "triangle": 6,
+    "filled-square": 7,
+    "filled-diamond": 8,
+    "filled-circle": 9,
+    "filled-triangle": 10,
+}
+
 
 @dataclass(frozen=True)
 class Trace:
@@ -13,6 +27,7 @@ class Trace:
     y: Expr
     color: str | None = None
     style: str = "solid"
+    marker: str = "none"
 
     def __post_init__(self):
         object.__setattr__(self, "x", expr(self.x))
@@ -21,6 +36,8 @@ class Trace:
             raise ValueError("Trace color must be #RRGGBB")
         if self.style not in {"solid", "dash", "dot", "dash-dot"}:
             raise ValueError("Unknown trace line style")
+        if self.marker not in MARKERS:
+            raise ValueError("Unknown trace marker")
 
 
 @dataclass
@@ -31,6 +48,8 @@ class XYPlot(Region):
     height: float = field(default=220, kw_only=True)
     x_bounds: tuple[float | None, float | None] = (None, None)
     y_bounds: tuple[float | None, float | None] = (None, None)
+    x_grid: bool = False
+    y_grid: bool = False
 
     def __post_init__(self):
         super().__post_init__()

@@ -268,3 +268,24 @@ def test_native_cam_synthesis_and_complete_graphs():
         "cam-pressure-angle",
         "cam-profile",
     ]
+
+
+def test_native_large_graph_and_long_name_survive_save():
+    path = Path(__file__).parent / "fixtures/graph-stress-mathcad14.xmcd"
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+    assert root.xpath("//ws:region[ws:plot]/@tag", namespaces=NS) == [
+        "style-probe",
+        "name-70",
+        "tree-over-255",
+    ]
+
+
+def test_native_plot_expressions_and_point_markers():
+    path = Path(__file__).parent / "fixtures/plot-expressions-mathcad14.xmcd"
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+    assert root.xpath("//ws:region[ws:plot]/@tag", namespaces=NS) == [
+        "compound-operators",
+        "point-markers",
+    ]
