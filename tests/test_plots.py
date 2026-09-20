@@ -54,3 +54,22 @@ def test_polar_graph_has_its_own_coordinate_system():
     assert b"\x06\x20\x00\x00" in polar
     assert b"\x02\x20\x00\x00" in xy
     assert len(polar) < len(xy)
+
+
+@pytest.mark.parametrize(
+    "value,encoded",
+    [
+        (0, "00"),
+        (63, "3f"),
+        (64, "4040"),
+        (69, "4045"),
+        (255, "40ff"),
+        (256, "4100"),
+        (16383, "7fff"),
+        (16384, "804000"),
+    ],
+)
+def test_compact_archive_integer_boundaries(value, encoded):
+    from xmcd._plot_binary import compact_uint
+
+    assert compact_uint(value) == bytes.fromhex(encoded)

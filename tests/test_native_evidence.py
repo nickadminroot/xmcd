@@ -205,7 +205,7 @@ def test_native_roundtrip_preserves_generated_expression_trees():
             return node.tag, str(float(node.text)), ()
         return node.tag, (node.text or "").strip(), tuple(shape(child) for child in node)
 
-    for name in ("precedence", "compressor"):
+    for name in ("precedence", "compressor", "cam"):
         source = runpy.run_path(str(Path(__file__).parents[1] / "examples" / f"{name}.py"))[
             "build"
         ]().to_xml()
@@ -239,3 +239,32 @@ def test_native_ui_parameter_edit_recalculates_connected_document():
             for root in (before, after)
         ]
         assert math.isclose(values[1], values[0] / 2, rel_tol=1e-9), tag
+
+
+def test_native_cam_synthesis_and_complete_graphs():
+    path = Path(__file__).parent / "fixtures/cam-mathcad14.xmcd"
+    assert calculation_errors(path) == []
+    root = parse_xml(path)
+
+    def scalar(tag):
+        return float(
+            root.xpath("//ws:region[@tag=$tag]//ml:result/ml:real/text()", tag=tag, namespaces=NS)[
+                0
+            ]
+        )
+
+    assert math.isclose(scalar("normalized-lift"), 0.015, abs_tol=1e-8)
+    assert abs(scalar("normalized-closure")) < 1e-6
+    assert math.isclose(scalar("pressure-plus30"), 30, abs_tol=1e-8)
+    assert math.isclose(scalar("pressure-minus30"), -30, abs_tol=1e-8)
+    assert math.isclose(
+        scalar("cam-r0"), math.hypot(scalar("cam-s0"), scalar("cam-e")), abs_tol=1e-10
+    )
+    assert root.xpath("//ws:region[ws:plot]/@tag", namespaces=NS) == [
+        "cam-a",
+        "cam-v",
+        "cam-s",
+        "cam-phase-portrait",
+        "cam-pressure-angle",
+        "cam-profile",
+    ]

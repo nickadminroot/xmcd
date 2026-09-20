@@ -16,6 +16,14 @@ def u32(value):
     return struct.pack("<I", value)
 
 
+def compact_uint(value):
+    """Archive integer: two leading length bits, then big-endian value bits."""
+    if not 0 <= value < 1 << 30:
+        raise ValueError("Mathcad archive integers must fit in 30 bits")
+    size = max(1, (value.bit_length() + 9) // 8)
+    return (value | ((size - 1) << (size * 8 - 2))).to_bytes(size, "big")
+
+
 def class_record(*classes):
     data = b"\0" + u32(len(classes))
     for name, version, identifier in classes:
@@ -89,12 +97,10 @@ class TreeWriter:
             return b"\0"
         self.identifier += 1
         identifier = self.identifier
-        if identifier >= 255:
-            raise ValueError("Extended graph object references have not been verified yet")
-        header = bytes([identifier])
+        header = compact_uint(identifier)
         header += class_record(("tree", 27, 0x32)) if identifier == 3 else b"\x32"
         flags = node.flags | side
-        data = header + struct.pack("<IBB", node.opcode, flags, parent)
+        data = header + struct.pack("<IB", node.opcode, flags) + compact_uint(parent)
         data += self.write(node.left, identifier, 0x40)
         data += self.write(node.right, identifier, 0x80)
         if node.opcode not in {0x700D, 0xC119}:
@@ -103,10 +109,8 @@ class TreeWriter:
             else:
                 encoded = node.text.encode("utf-16le")
                 size = len(encoded) // 2
-                if size >= 254:
-                    raise ValueError("Extended graph strings have not been verified yet")
-                data += bytes([size + 1]) + (b"\1" if flags & 0x10 else b"")
-                data += bytes([size]) + encoded + b"\0"
+                data += compact_uint(size + 1) + (b"\1" if flags & 0x10 else b"")
+                data += compact_uint(size) + encoded + b"\0"
         return data
 
 
@@ -158,7 +162,7 @@ def graph_bytes(plot):
     )
     data += struct.pack("<6i", x0, y0, x1, y1, x0, y0)
     data += struct.pack("<3IH", 0, 2, 0x110, 0) + b"\2"
-    data += body + bytes([writer.identifier + 1])
+    data += body + compact_uint(writer.identifier + 1)
     columns = max(1, round((plot.width - 27) / 6))
     rows = max(1, round((plot.height - 39.75) / 6))
     return data + formatting(columns, rows, plot.traces, polar=plot._polar)
