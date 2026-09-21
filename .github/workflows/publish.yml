@@ -16,5 +16,23 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv build
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Check whether the release is already on PyPI
+        id: pypi
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          if curl --fail --silent --show-error "https://pypi.org/pypi/xmcd/${version}/json" >/dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build distributions
+        if: steps.pypi.outputs.already_published != 'true'
+        run: uv build
+      - name: Publish distributions
+        if: steps.pypi.outputs.already_published != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Report existing publication
+        if: steps.pypi.outputs.already_published == 'true'
+        run: echo "This release is already available on PyPI; upload skipped."
