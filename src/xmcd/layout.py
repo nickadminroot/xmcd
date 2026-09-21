@@ -122,6 +122,7 @@ class ShapeContext:
         self.definitions = {}
         self.functions = {}
         self.shapes = {}
+        self.ranges = {}
 
     def number(self, node, seen=frozenset()):
         tag = local(node)
@@ -165,6 +166,11 @@ class ShapeContext:
             # Resolve before assignment: a := a + 1 uses the preceding a.
             self.shapes[key(lhs)] = self.infer(rhs)
             self.definitions[key(lhs)] = rhs
+            if local(rhs) == "range":
+                shape = self.infer(rhs)
+                self.ranges[key(lhs)] = shape.rows if shape is not None else None
+            else:
+                self.ranges.pop(key(lhs), None)
         elif local(lhs) == "function":
             self.functions[key(lhs[0])] = (list(lhs[1]), rhs)
         elif local(lhs) == "apply" and local(lhs[0]) == "indexer" and local(lhs[1]) == "id":
@@ -185,6 +191,53 @@ class ShapeContext:
                 sizes = [max(sizes[0], old.rows), max(sizes[1], old.columns)]
             if min(sizes) > 0:
                 self.shapes[key(lhs[1])] = ResultShape(*sizes)
+
+    def range_result(self, node):
+        """Find free range variables: repeated scalar evaluations form a result table.
+
+        Numeric integrals/sums and bracketed root bind their own variables. A
+        derivative instead evaluates at the outer variable's range of points.
+        """
+        if not self.ranges and local(node) != "range" and node.find(".//{*}range") is None:
+            return False, None
+        found = {}
+
+        def visit(n, bound=frozenset()):
+            tag = local(n)
+            if tag == "id":
+                name = key(n)
+                if name not in bound and name in self.ranges:
+                    found[name] = self.ranges[name]
+                return
+            if tag == "range":
+                shape = self.infer(n)
+                found[id(n)] = shape.rows if shape is not None else None
+                return
+            if tag == "apply" and len(n):
+                op = local(n[0])
+                if op in {"integral", "summation", "product"}:
+                    variables = frozenset(key(v) for v in n[1][0])
+                    visit(n[1][-1], bound | variables)
+                    for decoration in list(n)[2:]:
+                        visit(decoration, bound)
+                    return
+                if op == "id":
+                    args = list(n[1]) if local(n[1]) == "sequence" else [n[1]]
+                    if n[0].text == "root" and len(args) == 4 and local(args[1]) == "id":
+                        visit(args[0], bound | {key(args[1])})
+                        for arg in args[2:]:
+                            visit(arg, bound)
+                        return
+                    # The callee is a function name, not a range argument.
+                    for arg in args:
+                        visit(arg, bound)
+                    return
+            for part in n:
+                visit(part, bound)
+
+        visit(node)
+        counts = [count for count in found.values() if count is not None]
+        return bool(found), math.prod(counts) if counts else None
 
     def infer(self, node, bindings=None, seen=frozenset()):
         bindings = {} if bindings is None else bindings
@@ -269,7 +322,8 @@ class ShapeContext:
         if op == "Odesolve":
             return SCALAR
         if op in {"derivative", "integral", "summation", "product"}:
-            return self.infer(args[0][-1], bindings, seen) or SCALAR
+            local_bindings = {**bindings, **{key(v): SCALAR for v in args[0][0]}}
+            return self.infer(args[0][-1], local_bindings, seen) or SCALAR
         if op == "indexer":
             return SCALAR
         if op in {
@@ -376,25 +430,36 @@ class ShapeContext:
         return None
 
 
-def result_metrics(shape, size, table=False):
+def result_metrics(shape, size, table=False, table_min_rows=20):
     if not shape.matrix:
         return Metrics(size * 10, size, size * 0.5)
     # Include table header / scroll bar and enough line height for formatted numbers.
-    height = (shape.rows + (2 if table else 0)) * size * 1.8 + size
+    rows = max(shape.rows, table_min_rows) if table else shape.rows
+    height = (rows + (2 if table else 0)) * size * 1.8 + size
     return Metrics(shape.columns * size * 9 + size * 2, height / 2, height / 2)
 
 
-def math_metrics(expression, context, size, shape=None, table=False):
+def math_metrics(expression, context, size, shape=None, table=False, table_min_rows=20):
     node = expression.to_xml()
     metrics = measure(node, size)
     if local(node) == "symEval":
         raise LayoutError("Symbolic result geometry is unknown; provide an explicit height")
     if local(node) == "eval":
+        range_table, range_rows = context.range_result(node[0])
         inferred = shape if shape is not None else context.infer(node[0])
+        table = table or range_table
+        if range_table:
+            # Even g(k) := 7 produces one value for each range point when evaluated.
+            inferred = ResultShape(
+                max(range_rows or 1, inferred.rows if inferred is not None else 1),
+                inferred.columns if inferred is not None else 1,
+            )
+        if inferred is None and table:
+            inferred = ResultShape(table_min_rows, 1)
         if inferred is None:
             raise LayoutError(
                 "Result shape is unknown; provide result_shape=ResultShape(...) "
                 "(or ResultShape.scalar()), or an explicit height"
             )
-        metrics = join([metrics, result_metrics(inferred, size, table)], size)
+        metrics = join([metrics, result_metrics(inferred, size, table, table_min_rows)], size)
     return metrics

@@ -103,3 +103,7 @@ expression = B.SIN(phi) + omega**2
 `BuiltinFunction` содержит распространённые встроенные функции и вызывается непосредственно: `BuiltinFunction.LSOLVE(A, b)`. Остальные встроенные и пользовательские функции доступны через `Symbol('имя')(...)`; неизвестные анализатору встроенные функции требуют `ValidationContext` при проверке.
 
 Перечисления: `OperatorKind`, `SolverKind`, `SolverMethod`, `DefinitionKind`, `MatrixStyle`, `NumberFormat`, `LineStyle`, `Marker`, `TextStyle`, `Orientation`. Например, `Solver(SolverKind.FIND)`, `Operator(OperatorKind.CROSS_PRODUCT, a, b)`, `ResultFormat(matrix_style=MatrixStyle.TABLE)`, `Trace(x, y, marker=Marker.CIRCLE)`. Имена переменных, текст, подписи и HEX-цвета остаются текстовыми данными. Дочерние узлы выражений нормализуются в объекты `Expr` при создании: например, `Define(x, 2).rhs` — `Number`. Аннотации и `py.typed` включены в пакет.
+
+## Чтение существующего документа
+
+`Worksheet.read(path_or_bytes)` возвращает `LoadedWorksheet` с редактируемыми регионами и выражениями. `LoadedWorksheet.reflow()` пересчитывает последовательную расстановку; исходные позиции сохраняются до его вызова. [Пример редактирования и границы поддержки](reading.md).

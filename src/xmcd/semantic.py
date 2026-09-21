@@ -78,7 +78,7 @@ class ValidationContext:
             raise TypeError("functions must contain Function objects")
 
 
-@dataclass
+@dataclass(eq=False)
 class _Function:
     parameters: tuple
     body: object | None
@@ -200,6 +200,10 @@ class _Analyzer:
         self.diagnostics = []
         self.location = (0, "")
         self.active_calls = set()
+        self.call_cache = {}
+        self.emission_log = []
+        self.diagnostic_set = set()
+        self.opaque_call_epoch = 0
         self.in_solve = False
         self.scope = {(n, ""): _Value(SCALAR, units=u) for n, u in _UNITS.items()}
         self.scope.update(
@@ -227,7 +231,9 @@ class _Analyzer:
         diagnostic = Diagnostic(
             code, Severity.WARNING if warning else Severity.ERROR, message, *self.location, path
         )
-        if diagnostic not in self.diagnostics:
+        self.emission_log.append(diagnostic)
+        if diagnostic not in self.diagnostic_set:
+            self.diagnostic_set.add(diagnostic)
             self.diagnostics.append(diagnostic)
 
     def run(self):
@@ -846,16 +852,40 @@ class _Analyzer:
                 )
                 return _UNKNOWN
             if info.body is not None and name not in self.active_calls:
+                cache_key = (info, tuple(values), tuple(sorted(options.items())))
+                if cache_key in self.call_cache:
+                    result, diagnostics = self.call_cache[cache_key]
+                    for code, severity, message, suffix in diagnostics:
+                        self.emit(
+                            code, message, path + suffix, warning=severity is Severity.WARNING
+                        )
+                    return result
+                start = len(self.emission_log)
+                epoch = self.opaque_call_epoch
                 self.active_calls.add(name)
                 try:
-                    return self.visit(
+                    result = self.visit(
                         info.body,
                         {**info.scope, **dict(zip(info.parameters, values))},
                         path + "/function-body",
                         **options,
                     )
+                    # Keep a witness for each distinct failure, relocated to every
+                    # call site. Repeated nested calls must not expand exponentially.
+                    if self.opaque_call_epoch == epoch:
+                        diagnostics = {}
+                        for d in self.emission_log[start:]:
+                            diagnostics.setdefault(
+                                (d.code, d.severity, d.message), d.path[len(path) :]
+                            )
+                        self.call_cache[cache_key] = (
+                            result,
+                            tuple((*k, v) for k, v in diagnostics.items()),
+                        )
+                    return result
                 finally:
                     self.active_calls.remove(name)
+            self.opaque_call_epoch += 1
             self.emit(
                 "call-unchecked",
                 "Recursive or opaque function result requires Mathcad",

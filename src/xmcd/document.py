@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 from lxml import etree as ET
 
-from .expressions import ExpressionInput
+from .expressions import ExpressionInput, serialize_expression
 from .layout import LayoutError, ResultShape, ShapeContext, math_metrics
 from .types import MatrixStyle, NumberFormat, Orientation, TextStyle
 
@@ -107,12 +107,15 @@ class ResultFormat:
     precision: int = 6
     notation: NumberFormat = NumberFormat.GENERAL
     matrix_style: MatrixStyle = MatrixStyle.MATRIX
+    table_min_rows: int = 20
 
     def __post_init__(self):
         if not isinstance(self.notation, NumberFormat):
             raise TypeError("notation must be a NumberFormat")
         if not isinstance(self.matrix_style, MatrixStyle):
             raise TypeError("matrix_style must be a MatrixStyle")
+        if type(self.table_min_rows) is not int or self.table_min_rows < 1:
+            raise ValueError("table_min_rows must be a positive integer")
         if not isinstance(self.precision, int) or not 0 <= self.precision <= 17:
             raise ValueError("Mathcad precision must be an integer from 0 to 17")
 
@@ -148,7 +151,7 @@ class MathRegion(Region):
 
     def content_xml(self, context):
         node = element("math", disable_calc=str(self.disabled).lower())
-        node.append(self.expression.to_xml())
+        node.append(serialize_expression(self.expression))
         if self.result_format is not None:
             node.append(self.result_format.to_xml())
         return node
@@ -239,6 +242,7 @@ def _place(region, context, size, cursor, default_format=None, strict=True):
                     size,
                     region.result_shape,
                     fmt.matrix_style == "table",
+                    fmt.table_min_rows,
                 )
             except LayoutError:
                 if strict:
@@ -486,6 +490,13 @@ class Worksheet:
 
     def to_bytes(self) -> bytes:
         return ET.tostring(self.to_xml(), encoding="UTF-8", xml_declaration=True, pretty_print=True)
+
+    @classmethod
+    def read(cls, source: str | Path | bytes):
+        """Load editable regions while preserving unsupported original XML."""
+        from .reader import read_worksheet
+
+        return read_worksheet(source)
 
     def check(self, *, context: ValidationContext | None = None) -> ValidationReport:
         """Collect static diagnostics without raising for semantic errors."""

@@ -16,10 +16,20 @@ from .types import DefinitionKind, LiteralSubscript, OperatorKind, SolverKind, S
 ML = "http://schemas.mathsoft.com/math30"
 
 
+def serialize_expression(expression):
+    """Retain native metadata on unchanged immutable imported subexpressions."""
+    source = getattr(expression, "_source_xml", None)
+    return (
+        ET.fromstring(source, ET.XMLParser(resolve_entities=False, no_network=True))
+        if source is not None
+        else expression.to_xml()
+    )
+
+
 def node(tag, *children, text=None, **attrs):
     result = ET.Element(f"{{{ML}}}{tag}", {k: str(v) for k, v in attrs.items()})
     result.text = text
-    result.extend(c.to_xml() if isinstance(c, Expr) else c for c in children)
+    result.extend(serialize_expression(c) if isinstance(c, Expr) else c for c in children)
     return result
 
 

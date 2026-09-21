@@ -187,3 +187,82 @@ def test_program_with_growing_array_requires_result_shape():
     w.regions[-1].result_shape = ResultShape(16, 1)
     w.to_bytes()
     assert w.regions[-1].height > 280
+
+
+def test_range_results_reserve_table_rows_even_for_scalar_functions():
+    from xmcd import Function, Range
+
+    k, x = Symbol("k"), Symbol("x")
+    g = Function(Symbol("g"), [x])
+    for formula in (B.ANGLE(1, x), Number(7)):
+        w = Worksheet()
+        w.define(g, formula)
+        w.define(k, Range(0, 40))
+        result = w.evaluate(g(k))
+        after = w.text("After table")
+        assert result.height > 40 * 18
+        assert result._axis == pytest.approx(result.height / 2)
+        assert after.top >= result.top + result.height + 12
+
+
+def test_unknown_range_length_and_explicit_table_have_conservative_minimum():
+    from xmcd import Range
+
+    k = Symbol("k")
+    w = Worksheet()
+    w.define(Symbol("stop"), Number(4).sqrt())
+    w.define(k, Range(0, Symbol("stop"), second=0.1))
+    result = w.evaluate(B.ANGLE(1, k))
+    assert result.height > 20 * 18
+    w = Worksheet(result_format=ResultFormat(matrix_style=MatrixStyle.TABLE, table_min_rows=30))
+    result = w.evaluate(Symbol("external")(1))
+    assert result.height > 30 * 18
+
+
+def test_calculus_bound_ranges_do_not_create_spurious_tables():
+    from xmcd import Integral, Range, Sum
+
+    k = Symbol("k")
+    w = Worksheet()
+    w.define(k, Range(0, 40))
+    assert w.evaluate(Sum(k, k, 1, 5)).height < 200
+    assert w.evaluate(Integral(k, k, 0, 1)).height < 200
+    assert w.evaluate(B.ROOT(k**2 - 2, k, 0, 2)).height < 200
+    w.define(k, 2)
+    assert w.evaluate(B.ANGLE(1, k)).height < 100
+
+
+def test_table_min_rows_validation_and_matrix_style():
+    for value in (0, -1, 1.5, True):
+        with pytest.raises(ValueError, match="table_min_rows"):
+            ResultFormat(table_min_rows=value)
+    w = Worksheet()
+    a = Symbol("A")
+    w.define(a, Matrix.vector([1, 2]))
+    matrix = w.evaluate(a)
+    table = w.evaluate(a, result_format=ResultFormat(matrix_style=MatrixStyle.TABLE))
+    assert matrix.height < 100
+    assert table.height > 20 * 18
+
+
+def test_range_tables_native_bounds_and_values():
+    from pathlib import Path
+
+    from xmcd.validation import calculation_errors, parse_xml
+
+    for size in (10, 14):
+        path = Path(__file__).parent / "fixtures" / f"range-tables-{size}-mathcad14.xmcd"
+        root = parse_xml(path)
+        assert not calculation_errors(path)
+        regions = root.findall("ws:regions/ws:region", NS)
+        for first, second in pairwise(regions):
+            assert (
+                float(second.get("top")) - float(first.get("top")) - float(first.get("height")) >= 6
+            )
+        matrices = root.findall(".//ml:result/ml:matrix", NS)
+        assert len(matrices) == 5
+        assert matrices[0].get("rows") == "21"
+        values = matrices[0].findall("ml:real", NS)
+        assert float(values[0].text) == pytest.approx(0)
+        assert float(values[-1].text) == pytest.approx(4)
+        assert {float(n.text) for n in matrices[1].findall("ml:real", NS)} == {7}

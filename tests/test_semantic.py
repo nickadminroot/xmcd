@@ -299,3 +299,32 @@ def test_origin_constant_and_caught_builtin_error():
     assert not w.check().errors
     program = Program(TryCatch(B.LSOLVE(Matrix([[1, 2]]), Matrix([[1]])), 99), 0)
     assert not sheet_with(program).check().errors
+
+
+def test_repeated_function_graph_is_memoized_without_losing_errors(monkeypatch):
+    from xmcd import Define, Function, Symbol, Worksheet
+    from xmcd.semantic import _Analyzer
+
+    x = Symbol("x")
+    w = Worksheet()
+    previous = Function(Symbol("f0"), [x])
+    w.math(Define(previous, 1 / x))
+    for i in range(1, 16):
+        current = Function(Symbol(f"f{i}"), [x])
+        w.math(Define(current, previous(x) + previous(x)))
+        previous = current
+    w.evaluate(previous(1), height=30, tag="valid")
+    w.evaluate(previous(0), height=30, tag="invalid1")
+    w.evaluate(previous(0), height=30, tag="invalid2")
+    count = 0
+    visit = _Analyzer.visit
+
+    def counted(self, *args, **kwargs):
+        nonlocal count
+        count += 1
+        return visit(self, *args, **kwargs)
+
+    monkeypatch.setattr(_Analyzer, "visit", counted)
+    report = w.check()
+    assert {d.tag for d in report.errors} == {"invalid1", "invalid2"}
+    assert count < 2000

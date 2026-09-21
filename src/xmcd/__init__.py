@@ -37,6 +37,7 @@ from .expressions import (
 )
 from .layout import LayoutError, ResultShape
 from .plots import PolarPlot, Trace, XYPlot
+from .reader import LoadedWorksheet, OpaqueExpression, OpaqueRegion
 from .semantic import (
     Diagnostic,
     Severity,
@@ -84,12 +85,15 @@ __all__ = [
     "LayoutError",
     "LineStyle",
     "LiteralSubscript",
+    "LoadedWorksheet",
     "Marker",
     "MathRegion",
     "Matrix",
     "MatrixStyle",
     "Number",
     "NumberFormat",
+    "OpaqueExpression",
+    "OpaqueRegion",
     "Operator",
     "OperatorKind",
     "Orientation",
