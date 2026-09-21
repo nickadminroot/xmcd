@@ -42,7 +42,9 @@ API использует явные объекты: `Symbol`, `Number`, `String`
 
 ## Установка пакета
 
-После публикации пакет устанавливается из PyPI:
+Страница пакета: [PyPI](https://pypi.org/project/xmcd/).
+
+Пакет устанавливается из PyPI:
 
 ```bash
 python -m pip install xmcd
