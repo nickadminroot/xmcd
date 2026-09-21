@@ -42,6 +42,14 @@ API использует явные объекты: `Symbol`, `Number`, `String`
 
 ## Установка пакета
 
+После публикации пакет устанавливается из PyPI:
+
+```bash
+python -m pip install xmcd
+```
+
+Для разработки из исходного дерева:
+
 ```bash
 uv build
 uv pip install dist/xmcd-0.4.0-py3-none-any.whl
@@ -50,3 +58,5 @@ uv pip install dist/xmcd-0.4.0-py3-none-any.whl
 Пакет не обращается к Windows, Mathcad или COM. Для вычисления формул полученный файл открывается в классическом Mathcad. Проверенная версия — 14.1.5.594; совместимость с другими версиями требует отдельного тестирования.
 
 Связанные расчёты: `examples/compressor.py` и `examples/cam.py`. Остальные примеры показывают отдельные группы API. Сгенерированные файлы записываются в `output/`; пересчитанные образцы для регрессии находятся в `tests/fixtures/`.
+
+Исходный код и история изменений: [github.com/nickadminroot/xmcd](https://github.com/nickadminroot/xmcd).
